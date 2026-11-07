@@ -62,6 +62,7 @@ function renderStatic() {
   $("t-sat-overlay").textContent = t("overlays");
   $("t-mine").textContent = t("mine");
   $("t-footer").textContent = t("footer");
+  $("t-rights").textContent = t("rights");
   $("soum-q").placeholder = t("soum_search");
   $("hint").textContent = t("hint");
   if (state.manifest?.synthetic) { $("test-flag").hidden = false; $("test-flag").textContent = t("synthetic"); }

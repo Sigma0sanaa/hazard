@@ -48,3 +48,17 @@ python3 -m http.server 8080          # then open http://localhost:8080
 Pure static site (ES modules, no build step). The browser reads `data/latest.json` if it is less than 6 h old, otherwise computes live from Open-Meteo and caches for 90 minutes. Open the site through a web server or GitHub Pages; opening `index.html` as a file does not work because of ES modules.
 
 Third-party code: Leaflet 1.9.4 (BSD-2, `vendor/leaflet`). Mongolia outline: Natural Earth (public domain). Imagery: NASA GIBS/ESDIS. Weather: Open-Meteo.com (CC BY 4.0), contains modified Copernicus Atmosphere Monitoring Service information.
+
+## Зохиогчийн эрх · Copyright
+
+© 2026 Sigma0sanaa. Mongolia Hazard Watch · Монгол орны гамшгийн эрсдэлийн хяналт. Хөгжүүлэлт үргэлжилж буй бүтээл / Work in progress.
+
+Төслийн өөрийн анхны бүтээлийн бүх эрх хамгаалагдсан, холбогдох лиценз үйлчилнэ. Гуравдагч этгээдийн код, өгөгдөл өөрсдийн лицензтэй. Энэ төсөл Оюуны өмчийн газарт бүртгэгдээгүй, патентгүй.
+
+Original project content: all rights reserved, subject to applicable licenses. Third-party code and data keep their own licenses. Copyright protects the original expression of this work, not the general idea of a risk monitoring platform. The project has not been registered with the Intellectual Property Office of Mongolia and holds no patent.
+
+* Мэдэгдэл, зөвшөөрөл хүсэх / Notice and reuse requests: [COPYRIGHT.md](COPYRIGHT.md)
+* Гарал үүсэл / Provenance: [docs/PROJECT_PROVENANCE.md](docs/PROJECT_PROVENANCE.md)
+* Лицензийн хяналт / License review: [docs/LICENSE_REVIEW.md](docs/LICENSE_REVIEW.md)
+* Оюуны өмчийн бодлого / IP policy: [docs/INTELLECTUAL_PROPERTY_POLICY.md](docs/INTELLECTUAL_PROPERTY_POLICY.md)
+* Сайн дурын бүртгэлийн бэлтгэл / Preparing voluntary registration: [docs/COPYRIGHT_REGISTRATION_MONGOLIA.md](docs/COPYRIGHT_REGISTRATION_MONGOLIA.md)

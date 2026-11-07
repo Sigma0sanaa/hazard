@@ -53,6 +53,7 @@ export const U = {
     m_method: "Арга зүй", m_material: "Материал", m_error: "Алдаа ба шалгалт", m_limits: "Хязгаарлалт", m_refs: "Эх сурвалж", m_planned: "Earth Engine-ийн тооцоо хараахан ажиллаагүй тул доорх нь төлөвлөсөн өгөгдөл юм.",
     m_col_data: "Өгөгдөл", m_col_res: "Нарийвчлал", m_col_role: "Үүрэг",
     footer: "Өгөгдөл: Google Earth Engine, NASA GIBS. Энэ бол албан ёсны сэрэмжлүүлэг биш: шийдвэр гаргахдаа ЦУОШГ, ОБЕГ-ын мэдээг баримтална.",
+    rights: "© 2026 Sigma0sanaa · Монгол орны гамшгийн эрсдэлийн хяналт. Төслийн өөрийн бүтээлийн бүх эрх хамгаалагдсан, холбогдох лиценз үйлчилнэ.",
   },
   en: {
     title: "Mongolia hazard watch", subtitle: "Satellite · Google Earth Engine",
@@ -107,5 +108,6 @@ export const U = {
     m_method: "Method", m_material: "Materials", m_error: "Error and verification", m_limits: "Limits", m_refs: "Sources", m_planned: "The Earth Engine computation has not run yet, so the data below are planned, not yet in use.",
     m_col_data: "Data", m_col_res: "Resolution", m_col_role: "Role",
     footer: "Data: Google Earth Engine, NASA GIBS. Not an official warning: follow NAMEM and NEMA for decisions.",
+    rights: "© 2026 Sigma0sanaa · Mongolia Hazard Watch. Original project content: All rights reserved, subject to applicable licenses.",
   },
 };
