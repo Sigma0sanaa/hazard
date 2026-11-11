@@ -23,7 +23,15 @@ import common_uhg as U
 
 N, RES = 1334, 30
 MN, MRES = 45, 1000
-STAGES = sys.argv[1:] or ["grid", "landsat", "s2", "core", "static", "maiac", "merra", "s5p"]
+STAGES = sys.argv[1:] or ["landsat", "s2", "core", "static", "maiac:2002-2008", "maiac:2017-2025", "merra:2002-2025", "s5p"]
+
+
+def years_of(stage, default):
+    for s in STAGES:
+        if s.startswith(stage + ":"):
+            a, b = s.split(":")[1].split("-")
+            return list(range(int(a), int(b) + 1))
+    return default if stage in STAGES else []
 
 
 def grid_info():
@@ -94,7 +102,8 @@ def main():
         dem = ee.Image("USGS/SRTMGL1_003").select("elevation").rename("dem")
         save_bands("static.npz", wc.addBands(dem).toFloat(), g, ["wc", "dem"], scale=1)
 
-    if "maiac" in STAGES:
+    maiac_years = years_of("maiac", list(range(2002, 2009)) + list(range(2017, 2026)))
+    if maiac_years:
         m = g["maiac"]
         region = ee.Geometry.Point(list(U.UHG)).buffer(30000)
 
@@ -103,8 +112,7 @@ def main():
             ok = q.bitwiseAnd(7).eq(1).And(q.rightShift(5).bitwiseAnd(7).eq(0)).And(q.rightShift(8).bitwiseAnd(15).eq(0))
             return img.select("Optical_Depth_055").multiply(0.001).updateMask(ok).toFloat()
 
-        years = list(range(2002, 2009)) + list(range(2017, 2026))
-        for y in years:
+        for y in maiac_years:
             stack, times = [], []
             for mth in range(1, 13):
                 a = dt.date(y, mth, 1)
@@ -123,11 +131,12 @@ def main():
                 np.savez_compressed(os.path.join(U.OUT, f"maiac_{y}.npz"), aod=np.concatenate(stack), t=np.array(times, np.int64), scale=1000)
                 print("maiac", y, len(times), flush=True)
 
-    if "merra" in STAGES:
+    merra_years = years_of("merra", list(range(2002, 2026)))
+    if merra_years:
         sg = ee.Geometry.Rectangle([101, 42.5, 110, 45.5], "EPSG:4326", False)
         pt = U.point()
         rows = []
-        for y in range(2002, 2026):
+        for y in merra_years:
             n_days = (dt.date(y + 1, 1, 1) - dt.date(y, 1, 1)).days
             days = ee.List.sequence(0, n_days - 1)
             start = ee.Date(f"{y}-01-01")
@@ -145,7 +154,7 @@ def main():
                 p = f["properties"]
                 rows.append([p["date"], p.get("uhg"), p.get("gobi"), p.get("n")])
             print("merra", y, len(got["features"]), flush=True)
-        with open(os.path.join(U.OUT, "merra2_dust_daily.csv"), "w", newline="") as f:
+        with open(os.path.join(U.OUT, f"merra2_dust_daily_{merra_years[0]}_{merra_years[-1]}.csv"), "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["date", "dusmass_uhg_ugm3", "dusmass_gobi_ugm3", "n_hours"])
             w.writerows(rows)

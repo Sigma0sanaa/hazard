@@ -1,5 +1,6 @@
 # Research run for the Ukhaa Khudag coal-dust study (branch research/uhg-dust only).
-# It does not touch main, gee-data or the live site. Outputs are committed back to this branch under research/uhg/out.
+# It does not touch main, gee-data or the live site. Each line of research/uhg/stages.txt is one parallel job;
+# outputs go to an artifact, and the small ones are committed back to this branch under research/uhg/out.
 name: Research UHG dust
 on:
   push:
@@ -11,32 +12,46 @@ concurrency:
   group: research-uhg
   cancel-in-progress: false
 jobs:
-  run:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    outputs:
+      jobs: ${{ steps.p.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: echo "jobs=$(grep -v '^#' research/uhg/stages.txt | grep -v '^$' | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJson(needs.plan.outputs.jobs) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install "earthengine-api>=1.7" numpy requests
-      - name: Run the listed stages
+      - name: Run ${{ matrix.job }}
         env:
           EE_SERVICE_ACCOUNT_JSON: ${{ secrets.EE_SERVICE_ACCOUNT_JSON }}
+          JOB: ${{ matrix.job }}
         working-directory: research/uhg
         run: |
           set -o pipefail
           mkdir -p out
-          for s in $(grep -v '^#' stages.txt); do
-            echo "::group::$s"
-            python -u "$s.py" 2>&1 | tee "out/log_$s.txt"
-            echo "::endgroup::"
-          done
+          tag=$(echo "$JOB" | tr ' :' '__')
+          python -u $JOB 2>&1 | tee "out/log_${tag}.txt"
+      - id: tag
+        if: always()
+        run: echo "tag=$(echo '${{ matrix.job }}' | tr ' :.' '___')" >> "$GITHUB_OUTPUT"
       - name: Keep all outputs as an artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: uhg-out-${{ github.run_number }}
+          name: uhg-${{ github.run_number }}-${{ steps.tag.outputs.tag }}
           path: research/uhg/out
           retention-days: 30
       - name: Commit the small outputs
@@ -45,6 +60,6 @@ jobs:
           git config user.name "hazard-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -f -- research/uhg/out ':!research/uhg/out/*.npz'
-          git commit -q -m "UHG research outputs $(date -u +%FT%TZ)" || exit 0
-          for i in 1 2 3; do git pull -q --rebase origin research/uhg-dust && git push -q origin HEAD:research/uhg-dust && exit 0; sleep 5; done
+          git commit -q -m "UHG research outputs: ${{ matrix.job }}" || exit 0
+          for i in 1 2 3 4 5 6; do git pull -q --rebase origin research/uhg-dust && git push -q origin HEAD:research/uhg-dust && exit 0; sleep $((RANDOM % 20 + 5)); done
           exit 1
