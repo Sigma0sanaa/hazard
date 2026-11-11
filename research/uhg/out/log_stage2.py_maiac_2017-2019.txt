@@ -1,36 +1,40 @@
 {'crs': 'EPSG:32648', 'res': 30, 'n': 1334, 'x0': 521760, 'y0': 4855020, 'uhg_utm': [541769.9900269388, 4834996.532303327], 'tt_utm': [538254.8018128574, 4830333.003498095], 'uhg_lonlat': [105.5181, 43.6668], 'tt_lonlat': [105.47417, 43.625], 'maiac': {'res': 1000, 'n': 45, 'x0': 519270, 'y0': 4857497}}
-Traceback (most recent call last):
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 361, in _execute_cloud_call
-    return call.execute(num_retries=num_retries)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
-    return wrapped(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/googleapiclient/http.py", line 1018, in execute
-    raise HttpError(resp, content, uri=self.uri)
-googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/sigma-513109/image:computePixels? returned "Number of bands (3138) must be less than or equal to 1024.". Details: "Number of bands (3138) must be less than or equal to 1024.">
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 191, in <module>
-    main()
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 127, in main
-    arr = pixels(img, m["x0"], m["y0"], m["n"], m["n"], m["res"])
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 54, in pixels
-    a = U.retry(lambda: ee.data.computePixels(req))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/hazard/hazard/research/uhg/common_uhg.py", line 39, in retry
-    return fn()
-           ^^^^
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 54, in <lambda>
-    a = U.retry(lambda: ee.data.computePixels(req))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 908, in computePixels
-    data = _execute_cloud_call(
-           ^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 363, in _execute_cloud_call
-    raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ee.ee_exception.EEException: Number of bands (3138) must be less than or equal to 1024.
+maiac 2017 1
+maiac 2017 2
+maiac 2017 3
+maiac 2017 4
+maiac 2017 5
+maiac 2017 6
+maiac 2017 7
+maiac 2017 8
+maiac 2017 9
+maiac 2017 10
+maiac 2017 11
+maiac 2017 12
+maiac 2017 saved
+maiac 2018 1
+maiac 2018 2
+maiac 2018 3
+maiac 2018 4
+maiac 2018 5
+maiac 2018 6
+maiac 2018 7
+maiac 2018 8
+maiac 2018 9
+maiac 2018 10
+maiac 2018 11
+maiac 2018 12
+maiac 2018 saved
+maiac 2019 1
+maiac 2019 2
+maiac 2019 3
+maiac 2019 4
+maiac 2019 5
+maiac 2019 6
+maiac 2019 7
+maiac 2019 8
+maiac 2019 9
+maiac 2019 10
+maiac 2019 11
+maiac 2019 12
+maiac 2019 saved
