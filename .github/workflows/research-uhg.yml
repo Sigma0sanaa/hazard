@@ -1,0 +1,42 @@
+# Research run for the Ukhaa Khudag coal-dust study (branch research/uhg-dust only).
+# It does not touch main, gee-data or the live site. Outputs are committed back to this branch under research/uhg/out.
+name: Research UHG dust
+on:
+  push:
+    branches: [research/uhg-dust]
+    paths: ["research/uhg/*.py", "research/uhg/stages.txt", ".github/workflows/research-uhg.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: research-uhg
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "earthengine-api>=1.7" numpy requests
+      - name: Run the listed stages
+        env:
+          EE_SERVICE_ACCOUNT_JSON: ${{ secrets.EE_SERVICE_ACCOUNT_JSON }}
+        working-directory: research/uhg
+        run: |
+          set -o pipefail
+          for s in $(grep -v '^#' stages.txt); do
+            echo "::group::$s"
+            python -u "$s.py" 2>&1 | tee "out/log_$s.txt"
+            echo "::endgroup::"
+          done
+      - name: Commit the outputs
+        if: always()
+        run: |
+          git config user.name "hazard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f research/uhg/out
+          git commit -q -m "UHG research outputs $(date -u +%FT%TZ)" || exit 0
+          for i in 1 2 3; do git pull -q --rebase origin research/uhg-dust && git push -q origin HEAD:research/uhg-dust && exit 0; sleep 5; done
+          exit 1
