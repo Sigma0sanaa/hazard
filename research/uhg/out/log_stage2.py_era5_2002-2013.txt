@@ -1,0 +1,15 @@
+{'crs': 'EPSG:32648', 'res': 30, 'n': 1334, 'x0': 521760, 'y0': 4855020, 'uhg_utm': [541769.9900269388, 4834996.532303327], 'tt_utm': [538254.8018128574, 4830333.003498095], 'uhg_lonlat': [105.5181, 43.6668], 'tt_lonlat': [105.47417, 43.625], 'maiac': {'res': 1000, 'n': 45, 'x0': 519270, 'y0': 4857497}}
+/home/runner/work/hazard/hazard/research/uhg/stage2.py:156: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+  rows.append([dt.datetime.utcfromtimestamp(r[it] / 1000).strftime("%Y-%m-%dT%H:00")] + [r[head.index(k)] for k in bands])
+era5 2002 8760
+era5 2003 17520
+era5 2004 26304
+era5 2005 35064
+era5 2006 43824
+era5 2007 52584
+era5 2008 61368
+era5 2009 70128
+era5 2010 78888
+era5 2011 87648
+era5 2012 96432
+era5 2013 105192
