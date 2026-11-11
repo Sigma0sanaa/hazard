@@ -112,24 +112,76 @@ def main():
             ok = q.bitwiseAnd(7).eq(1).And(q.rightShift(5).bitwiseAnd(7).eq(0)).And(q.rightShift(8).bitwiseAnd(15).eq(0))
             return img.select("Optical_Depth_055").multiply(0.001).updateMask(ok).toFloat()
 
+        coll = ee.ImageCollection("MODIS/061/MCD19A2_GRANULES")
+        empty = ee.Image.constant([0, 0]).rename(["aod", "n"]).toFloat().updateMask(0)
         for y in maiac_years:
-            stack, times = [], []
+            stack, days = [], []
             for mth in range(1, 13):
                 a = dt.date(y, mth, 1)
                 b = dt.date(y + (mth == 12), mth % 12 + 1, 1)
-                col = ee.ImageCollection("MODIS/061/MCD19A2_GRANULES").filterBounds(region).filterDate(str(a), str(b)).sort("system:time_start")
-                t = U.retry(lambda: col.aggregate_array("system:time_start").getInfo())
-                if not t:
-                    continue
-                img = col.map(qa).toBands()
-                names = U.retry(lambda: img.bandNames().getInfo())
+                nd = (b - a).days
+                start = ee.Date(str(a))
+
+                def daily(k):
+                    d0 = start.advance(k, "day")
+                    c = coll.filterDate(d0, d0.advance(1, "day")).map(qa)
+                    img = ee.Image(ee.Algorithms.If(c.size().gt(0),
+                                                    c.reduce(ee.Reducer.mean().combine(ee.Reducer.count(), sharedInputs=True)).rename(["aod", "n"]).toFloat(),
+                                                    empty))
+                    return img
+                img = ee.ImageCollection.fromImages(ee.List.sequence(0, nd - 1).map(daily)).toBands()
                 img = img.multiply(1000).round().toInt16().unmask(-32768)
                 arr = pixels(img, m["x0"], m["y0"], m["n"], m["n"], m["res"])
-                stack.append(np.stack([np.asarray(arr[nm]) for nm in names]).astype(np.int16))
-                times += t
-            if stack:
-                np.savez_compressed(os.path.join(U.OUT, f"maiac_{y}.npz"), aod=np.concatenate(stack), t=np.array(times, np.int64), scale=1000)
-                print("maiac", y, len(times), flush=True)
+                names = list(arr.dtype.names)
+                stack.append(np.stack([np.asarray(arr[nm]) for nm in names]).astype(np.int16).reshape(nd, 2, m["n"], m["n"]))
+                days += [str(a + dt.timedelta(days=k)) for k in range(nd)]
+                print("maiac", y, mth, flush=True)
+            np.savez_compressed(os.path.join(U.OUT, f"maiac_{y}.npz"), daily=np.concatenate(stack), days=np.array(days), scale=1000,
+                                note="per day: band 0 mean best-quality AOD 550 nm over Terra+Aqua overpasses x1000, band 1 count x1000")
+            print("maiac", y, "saved", flush=True)
+
+    if "era5" in STAGES or any(x.startswith("era5:") for x in STAGES):
+        yrs = years_of("era5", list(range(2002, 2026)))
+        bands = ["u_component_of_wind_10m", "v_component_of_wind_10m", "total_precipitation_hourly", "snow_depth", "volumetric_soil_water_layer_1"]
+        rows = []
+        for y in yrs:
+            for half in ((1, 7), (7, 13)):
+                a = f"{y}-{half[0]:02d}-01"
+                b = f"{y + (half[1] == 13)}-{(half[1] - 1) % 12 + 1:02d}-01"
+                col = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filterDate(a, b).select(bands)
+                got = U.retry(lambda: col.getRegion(U.point(), 11132).getInfo())
+                head = got[0]
+                it = head.index("time")
+                for r in got[1:]:
+                    rows.append([dt.datetime.utcfromtimestamp(r[it] / 1000).strftime("%Y-%m-%dT%H:00")] + [r[head.index(k)] for k in bands])
+            print("era5", y, len(rows), flush=True)
+        import gzip
+        with gzip.open(os.path.join(U.OUT, f"era5land_hourly_uhg_{yrs[0]}_{yrs[-1]}.csv.gz"), "wt") as f:
+            w = csv.writer(f)
+            w.writerow(["time", "u10", "v10", "precip_m", "snow_depth_m", "swvl1"])
+            w.writerows(rows)
+
+    if "osm" in STAGES:
+        import requests
+        w_, s_, e_, n_ = U.BOX
+        q = f"""[out:json][timeout:120];
+(
+ way["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified"]({s_},{w_},{n_},{e_});
+ way["railway"]({s_},{w_},{n_},{e_});
+ way["landuse"~"quarry|industrial"]({s_},{w_},{n_},{e_});
+ relation["landuse"~"quarry|industrial"]({s_},{w_},{n_},{e_});
+ node["place"]({s_},{w_},{n_},{e_});
+);
+out geom;"""
+        for host in ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"):
+            try:
+                r = requests.post(host, data={"data": q}, timeout=200)
+                r.raise_for_status()
+                open(os.path.join(U.OUT, "osm_box.json"), "w", encoding="utf-8").write(r.text)
+                print("osm", len(r.json()["elements"]), flush=True)
+                break
+            except Exception as ex:
+                print("overpass failed", host, ex, flush=True)
 
     merra_years = years_of("merra", list(range(2002, 2026)))
     if merra_years:

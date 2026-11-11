@@ -114,3 +114,44 @@ def trajectories(e, sel, hours=(1, 3, 6)):
             dx += u[j] * 3600; dy += v[j] * 3600
         out[h] = (dx, dy)
     return out
+
+
+# ------------------------------------------------------------------ surfaces (step 2)
+
+def footprint_from(coal, change=None, close_px=5, min_km2=0.3):
+    """Mining footprint: coal surfaces (and strong surface change, if given), closed, holes filled, small bits dropped."""
+    m = coal.copy()
+    if change is not None:
+        m |= change
+    m = ndimage.binary_closing(m, structure=np.ones((3, 3)), iterations=close_px)
+    m = ndimage.binary_fill_holes(m)
+    lab, n = ndimage.label(m)
+    if n:
+        sizes = ndimage.sum(m, lab, range(1, n + 1)) * R * R / 1e6
+        keep = np.zeros(n + 1, bool)
+        keep[1:] = sizes >= min_km2
+        m = keep[lab]
+    return m
+
+
+def zones(fp, centre):
+    """Distance from the footprint edge (m) and bearing from the footprint centre (deg) for every pixel."""
+    dist = ndimage.distance_transform_edt(~fp) * R
+    cx, cy = centre
+    brg = bearing(XX - cx, YY - cy)
+    return dist, brg
+
+
+def zone_median(val, mask, dist, sec, rings):
+    """Median of val per (ring, sector); returns array [len(rings)-1, SECT] and pixel counts."""
+    med = np.full((len(rings) - 1, SECT), np.nan)
+    cnt = np.zeros((len(rings) - 1, SECT), int)
+    ok = mask & np.isfinite(val)
+    for i in range(len(rings) - 1):
+        ring = ok & (dist >= rings[i]) & (dist < rings[i + 1])
+        for s in range(SECT):
+            v = val[ring & (sec == s)]
+            cnt[i, s] = v.size
+            if v.size >= 30:
+                med[i, s] = np.median(v)
+    return med, cnt
