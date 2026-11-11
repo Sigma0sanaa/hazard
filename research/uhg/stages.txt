@@ -7,3 +7,4 @@ stage2.py maiac:2023-2025
 stage2.py era5:2002-2013
 stage2.py era5:2014-2025
 stage2.py osm
+stage2.py merra:2014-2025

@@ -196,7 +196,7 @@ out geom;"""
             def one(k):
                 d0 = start.advance(k, "day")
                 col = ee.ImageCollection("NASA/GSFC/MERRA/aer/2").filterDate(d0, d0.advance(1, "day")).filter(ee.Filter.calendarRange(2, 7, "hour")).select("DUSMASS")
-                im = col.mean().multiply(1e9)
+                im = ee.Image(ee.Algorithms.If(col.size().gt(0), col.mean().multiply(1e9), ee.Image.constant(0).rename("DUSMASS").toFloat().updateMask(0)))
                 a = im.reduceRegion(ee.Reducer.mean(), pt, 50000).get("DUSMASS")
                 b = im.reduceRegion(ee.Reducer.mean(), sg, 50000).get("DUSMASS")
                 return ee.Feature(None, dict(date=d0.format("YYYY-MM-dd"), uhg=a, gobi=b, n=col.size()))
@@ -223,7 +223,7 @@ out geom;"""
             def one(k):
                 d0 = start.advance(k, "day")
                 col = ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_AER_AI").filterDate(d0, d0.advance(1, "day")).select("absorbing_aerosol_index")
-                im = col.mean()
+                im = ee.Image(ee.Algorithms.If(col.size().gt(0), col.mean(), ee.Image.constant(0).rename("absorbing_aerosol_index").toFloat().updateMask(0)))
                 x = im.reduceRegion(ee.Reducer.mean(), near, 5000).get("absorbing_aerosol_index")
                 z = im.reduceRegion(ee.Reducer.mean(), U.box(), 5000).get("absorbing_aerosol_index")
                 return ee.Feature(None, dict(date=d0.format("YYYY-MM-dd"), near=x, box=z, n=col.size()))
