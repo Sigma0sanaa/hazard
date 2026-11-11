@@ -155,3 +155,327 @@ def zone_median(val, mask, dist, sec, rings):
             if v.size >= 30:
                 med[i, s] = np.median(v)
     return med, cnt
+
+
+# ------------------------------------------------------------------ inputs
+
+def load_era5land():
+    rows = []
+    for p in sorted(glob.glob(os.path.join(IN, "era5land_hourly_uhg_*.csv.gz"))):
+        with gzip.open(p, "rt") as f:
+            rows += list(csv.DictReader(f))
+    rows.sort(key=lambda r: r["time"])
+    t = np.array([np.datetime64(r["time"]) for r in rows])
+    f = lambda k: np.array([float(r[k]) if r[k] not in ("", "None") else np.nan for r in rows])
+    u, v = f("u10"), f("v10")
+    ws = np.hypot(u, v)
+    wd = (np.degrees(np.arctan2(-u, -v)) + 360) % 360       # meteorological: direction the wind blows FROM
+    return dict(t=t, u=u, v=v, ws=ws, wd=wd, pr=f("precip_m"), snow=f("snow_depth_m"), sm=f("swvl1"))
+
+
+def dust_mask(e):
+    return (e["ws"] >= THR_WIND) & (np.nan_to_num(e["pr"]) < 1e-4) & (np.nan_to_num(e["snow"]) < 0.01)
+
+
+def load_daily_csv(pattern, cols):
+    out = {}
+    for p in sorted(glob.glob(os.path.join(IN, pattern))):
+        for r in csv.DictReader(open(p)):
+            vals = []
+            for c in cols:
+                try:
+                    vals.append(float(r[c]))
+                except (TypeError, ValueError):
+                    vals.append(np.nan)
+            out[r["date"]] = vals
+    return out
+
+
+def maiac():
+    days, aod = [], []
+    for p in sorted(glob.glob(os.path.join(IN, "maiac_*.npz"))):
+        z = np.load(p)
+        d = z["daily"].astype(np.float32)
+        a = d[:, 0]
+        a[d[:, 0] == -32768] = np.nan
+        aod.append(a / 1000.0)
+        days += [str(x) for x in z["days"]]
+    return np.array(days), (np.concatenate(aod) if aod else None)
+
+
+def zone_stat(val, sel):
+    v = val[sel & np.isfinite(val)]
+    return (float(np.mean(v)) if v.size else np.nan), int(v.size)
+
+
+def boot_ci(x, n=2000, q=(2.5, 97.5)):
+    x = np.asarray(x, float)
+    x = x[np.isfinite(x)]
+    if x.size < 5:
+        return np.nan, np.nan
+    m = RNG.choice(x, (n, x.size), replace=True).mean(1)
+    return tuple(np.percentile(m, q))
+
+
+# ------------------------------------------------------------------ main
+
+RINGS = [0, 250, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000]
+NEAR = (500, 5000)          # m from the footprint edge: the zone compared downwind vs upwind
+FAR = (10000, 15000)        # m: background ring for the soil end member
+
+
+def run():
+    res = {}
+    st = np.load(os.path.join(IN, "static.npz"))
+    wc = st["data"][0].astype(int)
+    # --- composites
+    land = {}
+    for p in sorted(glob.glob(os.path.join(IN, "landsat_*.npz"))):
+        land[os.path.basename(p)[8:-4]] = indices(load_refl(p))
+    s2 = {}
+    for p in sorted(glob.glob(os.path.join(IN, "s2_20*.npz"))):
+        s2[os.path.basename(p)[3:7]] = indices(load_refl(p))
+
+    # --- footprint (step 2): coal surfaces of recent years + strong surface change since 2006-2008
+    post, pre = land["2023_2025"], land["2006_2008"]
+    coal_recent = np.zeros((N, N), bool)
+    for y in ("2023", "2024", "2025"):
+        if y in s2:
+            coal_recent |= (s2[y]["BCI"] >= BCI_THR) & (s2[y]["NDWI"] <= -0.05)
+    dvis = post["VIS"] - pre["VIS"]
+    near_mine = np.hypot(XX - UX, YY - UY) <= 12000
+    change = near_mine & (np.abs(dvis) >= 0.05)
+    fp = footprint_from(coal_recent, change)
+    lab, nlab = ndimage.label(fp)
+    iu = lab[np.argmin(np.abs(YC - UY)), np.argmin(np.abs(XC - UX))]
+    main = lab == iu if iu else fp
+    cy, cx = ndimage.center_of_mass(main)
+    centre = (G["x0"] + (cx + 0.5) * R, G["y0"] - (cy + 0.5) * R)
+    dist, brg = zones(fp, centre)
+    sec = sector(brg)
+    valid = (~fp) & (wc != 50) & (wc != 80)
+    res["footprint"] = dict(area_km2=float(fp.sum() * R * R / 1e6), main_area_km2=float(main.sum() * R * R / 1e6),
+                            coal_recent_km2=float(coal_recent.sum() * R * R / 1e6), centre_utm=centre,
+                            centre_offset_from_uhg_m=[centre[0] - UX, centre[1] - UY])
+
+    # --- coal-dust cover fraction (dimidiate pixel model of Xia et al. 2022 with local end members)
+    def fcd(ix, coal_mask):
+        soil = np.nanmedian(ix["ECDI"][valid & (dist >= FAR[0]) & (dist < FAR[1])])
+        coal = np.nanmedian(ix["ECDI"][coal_mask])
+        return np.clip((ix["ECDI"] - soil) / (coal - soil), 0, 1), float(soil), float(coal)
+
+    coal_mask_post = coal_recent & fp
+    ends = {}
+    for tag, ix in list(land.items()):
+        ix["FCD"], s_, c_ = fcd(ix, coal_mask_post)
+        ends["landsat_" + tag] = (s_, c_)
+    for tag, ix in list(s2.items()):
+        ix["FCD"], s_, c_ = fcd(ix, coal_mask_post)
+        ends["s2_" + tag] = (s_, c_)
+    res["fcd_end_members_ecdi_soil_coal"] = ends
+
+    # --- wind and transport (steps 3, 5)
+    e = load_era5land()
+    yr = e["t"].astype("datetime64[Y]").astype(int) + 1970
+    dm = dust_mask(e)
+    op = dm & (yr >= 2009)
+    toward = (e["wd"] + 180) % 360
+    freq = np.bincount(sector(toward[op]), minlength=SECT).astype(float)
+    freq /= freq.sum()
+    allh = (yr >= 2009) & np.isfinite(e["ws"])
+    freq_all = np.bincount(sector(toward[allh & (e["ws"] >= 1)]), minlength=SECT).astype(float)
+    freq_all /= freq_all.sum()
+    mon = e["t"].astype("datetime64[M]").astype(int) % 12 + 1
+    res["wind"] = dict(hours=int(allh.sum()), dust_hours=int(op.sum()), dust_share=float(op.sum() / allh.sum()),
+                       dust_hours_by_month=[int((op & (mon == m)).sum()) for m in range(1, 13)],
+                       toward_freq_dust=freq.tolist(), toward_freq_all=freq_all.tolist(),
+                       mean_ws=float(np.nanmean(e["ws"][allh])), p95_ws=float(np.nanpercentile(e["ws"][allh], 95)))
+    order = np.argsort(freq)[::-1]
+    D = sorted(order[:3].tolist())
+    U = sorted(order[-3:].tolist())
+    res["downwind_sectors"], res["upwind_sectors"] = D, U
+    tr = trajectories(e, op, hours=(1, 3, 6))
+    np.savez_compressed(os.path.join(RES_DIR, "traj.npz"), **{f"dx{h}": tr[h][0] for h in tr}, **{f"dy{h}": tr[h][1] for h in tr})
+
+    # --- zone profiles and surface DiD (step 4, surfaces)
+    def zmeans(ix, key):
+        out = np.full((len(RINGS) - 1, SECT), np.nan)
+        for i in range(len(RINGS) - 1):
+            ring = valid & (dist >= RINGS[i]) & (dist < RINGS[i + 1]) & np.isfinite(ix[key])
+            for s in range(SECT):
+                v = ix[key][ring & (sec == s)]
+                if v.size >= 30:
+                    out[i, s] = float(np.mean(v))
+        return out
+
+    prof = {}
+    for src, coll in (("landsat", land), ("s2", s2)):
+        for tag, ix in coll.items():
+            for key in ("FCD", "VIS", "NDVI"):
+                prof[f"{src}_{tag}_{key}"] = zmeans(ix, key).tolist()
+    res["profiles"] = dict(rings=RINGS, data=prof)
+
+    def ydu(ix, key, d_sec, u_sec):
+        near = valid & (dist >= NEAR[0]) & (dist < NEAR[1]) & np.isfinite(ix[key])
+        yd = float(np.mean(ix[key][near & np.isin(sec, d_sec)]))
+        yu = float(np.mean(ix[key][near & np.isin(sec, u_sec)]))
+        return yd, yu
+
+    def did(H, L, key, d_sec, u_sec):
+        ydh, yuh = ydu(H, key, d_sec, u_sec)
+        ydl, yul = ydu(L, key, d_sec, u_sec)
+        return dict(Y_DH=ydh, Y_UH=yuh, Y_DL=ydl, Y_UL=yul, delta=(ydh - yuh) - (ydl - yul))
+
+    surf = {}
+    pairs = [("landsat 2023-2025 vs 2006-2008 (before mining)", land["2023_2025"], land["2006_2008"])]
+    if "2023" in s2 and "2022" in s2:
+        pairs.append(("sentinel-2 2023 (high output) vs 2022 (low output)", s2["2023"], s2["2022"]))
+    for name, H, L in pairs:
+        for key in ("FCD", "VIS"):
+            r = did(H, L, key, D, U)
+            # randomisation check: the same contrast for every rotation of the sector pair
+            rot = []
+            for k in range(SECT):
+                dd = [(s + k) % SECT for s in D]
+                uu = [(s + k) % SECT for s in U]
+                rot.append(did(H, L, key, dd, uu)["delta"])
+            rot = np.array(rot)
+            r["rotations"] = rot.tolist()
+            r["rank_of_observed"] = int((np.abs(rot) >= abs(r["delta"]) - 1e-12).sum())
+            surf[f"{name} | {key}"] = r
+    # per-sector change vs transport frequency (Spearman)
+    from scipy.stats import spearmanr
+    ch = []
+    for s in range(SECT):
+        near = valid & (dist >= NEAR[0]) & (dist < NEAR[1]) & (sec == s)
+        a = land["2023_2025"]["FCD"][near]; b = land["2006_2008"]["FCD"][near]
+        ch.append(float(np.nanmean(a) - np.nanmean(b)))
+    rho, p = spearmanr(freq, ch)
+    surf["sector_change_vs_transport"] = dict(change=ch, rho=float(rho), p=float(p))
+    res["surface_did"] = surf
+
+    # affected area: FCD >= 0.3 outside the footprint, by period
+    aff = {}
+    for src, coll in (("landsat", land), ("s2", s2)):
+        for tag, ix in coll.items():
+            m = valid & (dist < 10000) & (ix["FCD"] >= 0.3)
+            aff[f"{src}_{tag}"] = dict(km2=float(m.sum() * R * R / 1e6),
+                                       km2_down=float((m & np.isin(sec, D)).sum() * R * R / 1e6),
+                                       km2_up=float((m & np.isin(sec, U)).sum() * R * R / 1e6))
+    res["affected_area_fcd03"] = aff
+
+    np.savez_compressed(os.path.join(RES_DIR, "maps.npz"), fp=fp, dist=dist.astype(np.float32), sec=sec.astype(np.int8), valid=valid,
+                        fcd_post=land["2023_2025"]["FCD"].astype(np.float32), fcd_pre=land["2006_2008"]["FCD"].astype(np.float32),
+                        dvis=dvis.astype(np.float32), coal=coal_recent,
+                        fcd_s2_2024=s2.get("2024", land["2023_2025"])["FCD"].astype(np.float32))
+
+    # --- AOD (step 4, air)
+    days, aod = maiac()
+    if aod is not None:
+        m = G["maiac"]
+        mx = m["x0"] + (np.arange(m["n"]) + 0.5) * m["res"]
+        my = m["y0"] - (np.arange(m["n"]) + 0.5) * m["res"]
+        MX, MY = np.meshgrid(mx, my)
+        # footprint fraction per 1 km cell
+        ci = ((XX - m["x0"]) // m["res"]).astype(int); cj = ((m["y0"] - YY) // m["res"]).astype(int)
+        frac = np.zeros((m["n"], m["n"])); cnt = np.zeros((m["n"], m["n"]))
+        ok = (ci >= 0) & (ci < m["n"]) & (cj >= 0) & (cj < m["n"])
+        np.add.at(frac, (cj[ok], ci[ok]), fp[ok].astype(float)); np.add.at(cnt, (cj[ok], ci[ok]), 1)
+        frac = np.where(cnt > 0, frac / np.maximum(cnt, 1), 0)
+        fp1 = frac >= 0.25
+        d1 = ndimage.distance_transform_edt(~fp1) * m["res"]
+        b1 = bearing(MX - centre[0], MY - centre[1])
+        ring1 = (~fp1) & (d1 >= 1000) & (d1 <= 10000)
+        far1 = (~fp1) & (d1 >= 15000)
+        # wind at the overpass hours (03-06 UTC)
+        hr = e["t"].astype("datetime64[h]").astype(int) % 24
+        dkey = e["t"].astype("datetime64[D]").astype(str)
+        sel = (hr >= 3) & (hr <= 6)
+        U_, V_, W_ = {}, {}, {}
+        for dk, uu, vv, ww in zip(dkey[sel], e["u"][sel], e["v"][sel], e["ws"][sel]):
+            U_.setdefault(dk, []).append(uu); V_.setdefault(dk, []).append(vv); W_.setdefault(dk, []).append(ww)
+        merra = load_daily_csv("merra2_dust_daily_*.csv", ["dusmass_uhg_ugm3", "dusmass_gobi_ugm3"])
+        recs = []
+        for k, dk in enumerate(days):
+            a = aod[k]
+            if dk not in U_ or not np.isfinite(a).any():
+                continue
+            u, v = np.mean(U_[dk]), np.mean(V_[dk])
+            sp = float(np.hypot(u, v))
+            if sp < 2:
+                continue
+            tw = (np.degrees(np.arctan2(u, v)) + 360) % 360
+            dd = np.abs((b1 - tw + 180) % 360 - 180)
+            du_ = np.abs((b1 - tw) % 360 - 180)
+            down = ring1 & (dd <= 45) & np.isfinite(a)
+            up = ring1 & (du_ <= 45) & np.isfinite(a)
+            if down.sum() < 3 or up.sum() < 3:
+                continue
+            rec = dict(day=dk, down=float(np.mean(a[down])), up=float(np.mean(a[up])), ws=sp, toward=float(tw),
+                       far=float(np.nanmean(a[far1])) if np.isfinite(a[far1]).any() else np.nan,
+                       merra_uhg=merra.get(dk, [np.nan, np.nan])[0], merra_gobi=merra.get(dk, [np.nan, np.nan])[1])
+            rec["d"] = rec["down"] - rec["up"]
+            recs.append(rec)
+        res["aod_n_days"] = len(recs)
+        json.dump(recs, open(os.path.join(RES_DIR, "aod_days.json"), "w"))
+        arr = lambda k: np.array([r[k] for r in recs], float)
+        dd_, dy = arr("d"), np.array([r["day"] for r in recs])
+        yrs = np.array([int(x[:4]) for x in dy])
+        mons = np.array([int(x[5:7]) for x in dy])
+        mu = arr("merra_uhg"); wsv = arr("ws")
+        q50, q90 = np.nanpercentile(mu, 50), np.nanpercentile(mu, 90)
+        def summ(mask):
+            x = dd_[mask]
+            lo, hi = boot_ci(x)
+            return dict(n=int(np.isfinite(x).sum()), mean=float(np.nanmean(x)) if x.size else np.nan, ci=[lo, hi],
+                        down=float(np.nanmean(arr("down")[mask])) if mask.any() else np.nan,
+                        up=float(np.nanmean(arr("up")[mask])) if mask.any() else np.nan)
+        pre_m, post_m = yrs <= 2008, yrs >= 2017
+        l22 = (yrs == 2022) & (mons <= 6); h23 = (yrs == 2023) & (mons <= 6)
+        groups = {
+            "pre 2002-2008": pre_m, "post 2017-2025": post_m,
+            "2022 Jan-Jun (low output)": l22, "2023 Jan-Jun (high output)": h23,
+            "pre, low natural dust": pre_m & (mu < q50), "post, low natural dust": post_m & (mu < q50),
+            "pre, high natural dust": pre_m & (mu >= q90), "post, high natural dust": post_m & (mu >= q90),
+            "pre, wind>=6": pre_m & (wsv >= THR_WIND), "post, wind>=6": post_m & (wsv >= THR_WIND),
+        }
+        out = {k: summ(v) for k, v in groups.items()}
+        def did_aod(h, l):
+            a, b = dd_[h], dd_[l]
+            a, b = a[np.isfinite(a)], b[np.isfinite(b)]
+            bs = RNG.choice(a, (2000, a.size)).mean(1) - RNG.choice(b, (2000, b.size)).mean(1)
+            return dict(delta=float(a.mean() - b.mean()), ci=np.percentile(bs, [2.5, 97.5]).tolist(), nH=int(a.size), nL=int(b.size))
+        out["DiD post vs pre"] = did_aod(post_m, pre_m)
+        out["DiD 2023H1 vs 2022H1"] = did_aod(h23, l22)
+        out["DiD post vs pre | low natural dust"] = did_aod(post_m & (mu < q50), pre_m & (mu < q50))
+        out["DiD post vs pre | high natural dust"] = did_aod(post_m & (mu >= q90), pre_m & (mu >= q90))
+        out["DiD post vs pre | wind>=6"] = did_aod(post_m & (wsv >= THR_WIND), pre_m & (wsv >= THR_WIND))
+        out["merra_thresholds"] = dict(q50=float(q50), q90=float(q90))
+        res["aod"] = out
+
+    # --- natural dust periods (step 3)
+    merra = load_daily_csv("merra2_dust_daily_*.csv", ["dusmass_uhg_ugm3", "dusmass_gobi_ugm3"])
+    aai = load_daily_csv("s5p_aai_daily.csv", ["aai_20km", "aai_box"])
+    ks = sorted(merra)
+    mv = np.array([merra[k][0] for k in ks])
+    mm = np.array([int(k[5:7]) for k in ks]); my_ = np.array([int(k[:4]) for k in ks])
+    q90 = np.nanpercentile(mv, 90)
+    nat = dict(q50=float(np.nanpercentile(mv, 50)), q90=float(q90), q99=float(np.nanpercentile(mv, 99)),
+               monthly_mean=[float(np.nanmean(mv[mm == m])) for m in range(1, 13)],
+               high_days_by_month=[int(((mv >= q90) & (mm == m)).sum()) for m in range(1, 13)],
+               high_days_by_year={int(y): int(((mv >= q90) & (my_ == y)).sum()) for y in sorted(set(my_))},
+               spring_mean_by_year={int(y): float(np.nanmean(mv[(my_ == y) & (mm >= 3) & (mm <= 5)])) for y in sorted(set(my_))},
+               top10=[(ks[i], float(mv[i])) for i in np.argsort(-np.nan_to_num(mv))[:10]])
+    common = [k for k in ks if k in aai and np.isfinite(aai[k][0]) and np.isfinite(merra[k][0])]
+    if common:
+        from scipy.stats import spearmanr
+        r_, p_ = spearmanr([merra[k][0] for k in common], [aai[k][0] for k in common])
+        nat["merra_vs_aai_spearman"] = dict(rho=float(r_), p=float(p_), n=len(common))
+    res["natural_dust"] = nat
+
+    save_json("results.json", res)
+    print(json.dumps({k: v for k, v in res.items() if k not in ("profiles",)}, indent=1, default=float)[:6000])
+
+
+if __name__ == "__main__":
+    run()
