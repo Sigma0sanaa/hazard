@@ -1,0 +1,92 @@
+saved s2_rgb_2024_box.png 3839468
+saved s2_rgb_2024_core.png 3118259
+saved landsat_rgb_2006_2008_box.png 2863546
+saved landsat_rgb_2024_box.png 3170962
+s2_2024 {"BCI_p10": -0.27743996203178944, "BCI_p2": -0.33622419878260795, "BCI_p25": -0.27743996203178944, "BCI_p5": -0.33622419878260795, "BCI_p50": -0.21833224279733182, "BCI_p75": -0.1593571564905909, "BCI_p90": -0.09981761040135827, "BCI_p95": 0.027158009675595212, "BCI_p98": 0.21681951990388262, "ECDI_p10": 1.1550048197860285, "ECDI_p2": 0.9164989577658721, "ECDI_p25": 1.1550048197860285, "ECDI_p5": 
+l5_2006_2008 {"BCI_p10": -0.3511286356576889, "BCI_p2": -0.41335400636163205, "BCI_p25": -0.3201151707220422, "BCI_p5": -0.3821949685125781, "BCI_p50": -0.2734832023745681, "BCI_p75": -0.24233758491468402, "BCI_p90": -0.19581686176486715, "BCI_p95": -0.18044246093396404, "BCI_p98": -0.16489850643413775, "ECDI_p10": 1.2111312086090538, "ECDI_p2": 1.0706335103171143, "ECDI_p25": 1.3204410785587013, "ECDI_p5": 1.
+l8_2024 {"BCI_p10": -0.42043605416355706, "BCI_p2": -0.5141548352762618, "BCI_p25": -0.35871093095970946, "BCI_p5": -0.45157361266297097, "BCI_p50": -0.2967727903559692, "BCI_p75": -0.2661275020500925, "BCI_p90": -0.20542871318032913, "BCI_p95": -0.10999855312011432, "BCI_p98": 0.046252543557789974, "ECDI_p10": 0.9068722384886474, "ECDI_p2": 0.7240246020950802, "ECDI_p25": 1.033182846554, "ECDI_p5": 0.845
+saved s2_NDCI_2024_box.png 3197965
+saved s2_NDCI_2024_core.png 876793
+saved s2_ECDI_2024_box.png 2854795
+saved s2_ECDI_2024_core.png 844276
+saved s2_BCI_2024_box.png 2783314
+saved s2_BCI_2024_core.png 787360
+saved s2_VIS_2024_box.png 3134431
+saved s2_VIS_2024_core.png 2187261
+open-meteo 2000 2003 35064
+open-meteo 2004 2007 35064
+open-meteo 2008 2011 35064
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 470, in _make_request
+    self._validate_conn(conn)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 1125, in _validate_conn
+    conn.connect()
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connection.py", line 878, in connect
+    wrapped_socket, is_verified = _ssl_wrap_socket_and_match_hostname(
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connection.py", line 1080, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 437, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 481, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/ssl.py", line 1054, in _create
+    self.do_handshake()
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/ssl.py", line 1332, in do_handshake
+    self._sslobj.do_handshake()
+TimeoutError: _ssl.c:994: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/util/retry.py", line 510, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 494, in _make_request
+    raise new_e
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 472, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 373, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='archive-api.open-meteo.com', port=443): Read timed out. (read timeout=600)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/runner/work/hazard/hazard/research/uhg/stage1.py", line 97, in <module>
+    main()
+  File "/home/runner/work/hazard/hazard/research/uhg/stage1.py", line 60, in main
+    r = requests.get(url, timeout=600)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/requests/adapters.py", line 742, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='archive-api.open-meteo.com', port=443): Read timed out. (read timeout=600)
