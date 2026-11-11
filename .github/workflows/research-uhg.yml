@@ -32,12 +32,19 @@ jobs:
             python -u "$s.py" 2>&1 | tee "out/log_$s.txt"
             echo "::endgroup::"
           done
-      - name: Commit the outputs
+      - name: Keep all outputs as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uhg-out-${{ github.run_number }}
+          path: research/uhg/out
+          retention-days: 30
+      - name: Commit the small outputs
         if: always()
         run: |
           git config user.name "hazard-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add -f research/uhg/out
+          git add -f -- research/uhg/out ':!research/uhg/out/*.npz'
           git commit -q -m "UHG research outputs $(date -u +%FT%TZ)" || exit 0
           for i in 1 2 3; do git pull -q --rebase origin research/uhg-dust && git push -q origin HEAD:research/uhg-dust && exit 0; sleep 5; done
           exit 1
