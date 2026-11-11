@@ -47,19 +47,29 @@ jobs:
       - id: tag
         if: always()
         run: echo "tag=$(echo '${{ matrix.job }}' | tr ' :.' '___')" >> "$GITHUB_OUTPUT"
-      - name: Keep all outputs as an artifact
+      - name: Store the arrays on branch research/uhg-data
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: uhg-${{ github.run_number }}-${{ steps.tag.outputs.tag }}
-          path: research/uhg/out
-          retention-days: 30
+        run: |
+          shopt -s nullglob
+          files=(research/uhg/out/*.npz research/uhg/out/*.csv.gz)
+          [ ${#files[@]} -eq 0 ] && exit 0
+          mkdir -p /tmp/keep && cp "${files[@]}" /tmp/keep/
+          git config --global user.name "hazard-bot"
+          git config --global user.email "actions@users.noreply.github.com"
+          for i in 1 2 3 4 5 6 7 8; do
+            rm -rf /tmp/wt; git worktree prune
+            git fetch -q --depth 1 origin research/uhg-data && git worktree add -q --detach /tmp/wt FETCH_HEAD || { sleep 10; continue; }
+            cp /tmp/keep/* /tmp/wt/
+            (cd /tmp/wt && git add -A && (git commit -q -m "UHG arrays: ${{ matrix.job }}" || true) && git push -q origin HEAD:research/uhg-data) && exit 0
+            sleep $((RANDOM % 30 + 10))
+          done
+          exit 1
       - name: Commit the small outputs
         if: always()
         run: |
           git config user.name "hazard-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add -f -- research/uhg/out ':!research/uhg/out/*.npz'
+          git add -f -- research/uhg/out ':!research/uhg/out/*.npz' ':!research/uhg/out/*.csv.gz'
           git commit -q -m "UHG research outputs: ${{ matrix.job }}" || exit 0
           for i in 1 2 3 4 5 6; do git pull -q --rebase origin research/uhg-dust && git push -q origin HEAD:research/uhg-dust && exit 0; sleep $((RANDOM % 20 + 5)); done
           exit 1
