@@ -12,7 +12,9 @@ import common_uhg as U
 def thumb(img, region, name, dims=1600, **vis):
     url = U.retry(lambda: img.getThumbURL(dict(region=region, dimensions=dims, format="png", **vis)))
     r = requests.get(url, timeout=300)
-    r.raise_for_status()
+    if r.status_code != 200:
+        print("thumb failed", name, r.status_code, r.text[:500], flush=True)
+        return
     open(os.path.join(U.OUT, name), "wb").write(r.content)
     print("saved", name, len(r.content), flush=True)
 
@@ -24,8 +26,8 @@ def main():
     stats = {}
 
     s2 = U.indices(U.s2_sr("2024-06-01", "2024-10-01").median())
-    l5 = U.indices(U.landsat_sr("2006-06-01", "2008-10-01").filterDate("2006-06-01", "2008-10-01").median())
-    l8 = U.indices(U.landsat_sr("2024-06-01", "2024-10-01").median())
+    l5 = U.indices(U.landsat_sr("2006-06-01", "2008-10-01", ("LT05",)).median())
+    l8 = U.indices(U.landsat_sr("2024-06-01", "2024-10-01", ("LC08", "LC09")).median())
     rgb = dict(bands=["red", "green", "blue"], min=0.02, max=0.40, gamma=1.3)
     thumb(s2, box, "s2_rgb_2024_box.png", **rgb)
     thumb(s2, core, "s2_rgb_2024_core.png", dims=1400, **rgb)

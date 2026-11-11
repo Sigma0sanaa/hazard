@@ -59,25 +59,27 @@ def s2_sr(start, end, max_cloud=30):
         scl = img.select("SCL")
         ok = scl.neq(3).And(scl.neq(8)).And(scl.neq(9)).And(scl.neq(10)).And(scl.neq(11)).And(scl.neq(0)).And(scl.neq(1))
         r = img.select(["B2", "B3", "B4", "B8A", "B11", "B12"], ["blue", "green", "red", "nir", "swir1", "swir2"]).multiply(1e-4)
-        return r.updateMask(ok).copyProperties(img, ["system:time_start"])
+        return ee.Image(r.updateMask(ok).copyProperties(img, ["system:time_start"]))
     return (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(box()).filterDate(start, end)
             .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", max_cloud)).map(prep))
 
 
-def landsat_sr(start, end):
+def landsat_sr(start, end, sensors=("LT05", "LE07", "LC08", "LC09")):
     """Landsat 5/7/8/9 Collection 2 Level 2 reflectance 0-1 with common band names; clouds, shadows, snow masked."""
     def prep(names):
         def f(img):
             qa = img.select("QA_PIXEL")
             ok = qa.bitwiseAnd(0b111110).eq(0)  # dilated cloud, cirrus, cloud, shadow, snow
-            r = img.select(names, ["blue", "green", "red", "nir", "swir1", "swir2"]).multiply(0.0000275).add(-0.2)
-            return r.updateMask(ok).copyProperties(img, ["system:time_start"])
+            r = img.select(names, ["blue", "green", "red", "nir", "swir1", "swir2"]).toFloat().multiply(0.0000275).add(-0.2)
+            return ee.Image(r.updateMask(ok).copyProperties(img, ["system:time_start"]))
         return f
     tm = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B7"]
     oli = ["SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7"]
     cols = [("LANDSAT/LT05/C02/T1_L2", tm), ("LANDSAT/LE07/C02/T1_L2", tm), ("LANDSAT/LC08/C02/T1_L2", oli), ("LANDSAT/LC09/C02/T1_L2", oli)]
     out = None
     for cid, names in cols:
+        if cid.split("/")[1] not in sensors:
+            continue
         c = ee.ImageCollection(cid).filterBounds(box()).filterDate(start, end).filter(ee.Filter.lt("CLOUD_COVER", 40)).map(prep(names))
         out = c if out is None else out.merge(c)
     return out

@@ -26,6 +26,7 @@ jobs:
         working-directory: research/uhg
         run: |
           set -o pipefail
+          mkdir -p out
           for s in $(grep -v '^#' stages.txt); do
             echo "::group::$s"
             python -u "$s.py" 2>&1 | tee "out/log_$s.txt"
