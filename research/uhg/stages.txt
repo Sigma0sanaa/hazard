@@ -1,12 +1,2 @@
 # one parallel job per line: script and arguments
-stage2.py landsat static core
-stage2.py s2
-stage2.py maiac:2002-2005
-stage2.py maiac:2006-2008
-stage2.py maiac:2017-2019
-stage2.py maiac:2020-2022
-stage2.py maiac:2023-2025
-stage2.py era5:2002-2013
 stage2.py era5:2014-2025
-stage2.py osm
-stage2.py merra:2014-2025

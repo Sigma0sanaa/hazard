@@ -145,9 +145,9 @@ def main():
         bands = ["u_component_of_wind_10m", "v_component_of_wind_10m", "total_precipitation_hourly", "snow_depth", "volumetric_soil_water_layer_1"]
         rows = []
         for y in yrs:
-            for half in ((1, 7), (7, 13)):
-                a = f"{y}-{half[0]:02d}-01"
-                b = f"{y + (half[1] == 13)}-{(half[1] - 1) % 12 + 1:02d}-01"
+            for mth in range(1, 13):
+                a = f"{y}-{mth:02d}-01"
+                b = f"{y + (mth == 12)}-{mth % 12 + 1:02d}-01"
                 col = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filterDate(a, b).select(bands)
                 got = U.retry(lambda: col.getRegion(U.point(), 11132).getInfo())
                 head = got[0]
