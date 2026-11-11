@@ -10,41 +10,4 @@ merra 2021 365
 merra 2022 365
 merra 2023 365
 merra 2024 366
-Traceback (most recent call last):
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 361, in _execute_cloud_call
-    return call.execute(num_retries=num_retries)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
-    return wrapped(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/googleapiclient/http.py", line 1018, in execute
-    raise HttpError(resp, content, uri=self.uri)
-googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/sigma-513109/value:compute?prettyPrint=false&alt=json returned "Image.multiply: If one image has no bands, the other must also have no bands. Got 0 and 1.". Details: "Image.multiply: If one image has no bands, the other must also have no bands. Got 0 and 1.">
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 191, in <module>
-    main()
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 152, in main
-    got = U.retry(lambda: fc.getInfo())
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/hazard/hazard/research/uhg/common_uhg.py", line 39, in retry
-    return fn()
-           ^^^^
-  File "/home/runner/work/hazard/hazard/research/uhg/stage2.py", line 152, in <lambda>
-    got = U.retry(lambda: fc.getInfo())
-                          ^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/collection.py", line 590, in getInfo
-    return super().getInfo()
-           ^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/computedobject.py", line 108, in getInfo
-    return data.computeValue(self)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 1082, in computeValue
-    return _execute_cloud_call(
-           ^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ee/data.py", line 363, in _execute_cloud_call
-    raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ee.ee_exception.EEException: Image.multiply: If one image has no bands, the other must also have no bands. Got 0 and 1.
+merra 2025 365
