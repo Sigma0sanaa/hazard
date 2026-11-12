@@ -1,0 +1,5 @@
+2011 rows 30 paired 7 pixels 330
+2012 rows 30 paired 11 pixels 330
+2013 rows 30 paired 8 pixels 330
+2014 rows 30 paired 7 pixels 330
+2015 rows 30 paired 7 pixels 330
