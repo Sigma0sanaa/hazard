@@ -1,0 +1,5 @@
+2016 rows 30 paired 9 pixels 330
+2017 rows 30 paired 10 pixels 330
+2018 rows 30 paired 14 pixels 330
+2019 rows 30 paired 10 pixels 330
+2020 rows 30 paired 10 pixels 330
