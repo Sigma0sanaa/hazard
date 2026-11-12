@@ -373,3 +373,11 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
 .md-day.on { border-color: #e8b04a; color: var(--ink); }
 .md-slider { width: 100%; accent-color: #e8b04a; }
 .md-line { margin: 4px 0; font-size: 12px; line-height: 1.45; }
+
+/* the mine dust and vegetation box: the classified panel after a run */
+.veg-panel { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.veg-group { border-top: 1px solid var(--line2); padding: 4px 0; }
+.veg-group:first-of-type { border-top: 0; }
+.veg-group .check b { font-weight: 650; }
+.veg-key { margin: 4px 0; font-size: 11px; color: var(--ink2); }
+.veg-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 2px; vertical-align: -1px; }
