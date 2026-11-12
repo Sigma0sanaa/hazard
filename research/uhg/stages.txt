@@ -1,2 +1,1 @@
-# one parallel job per line: script and arguments
-stage2.py era5:2014-2025
+# one parallel job per line: script and arguments (empty: nothing runs)
