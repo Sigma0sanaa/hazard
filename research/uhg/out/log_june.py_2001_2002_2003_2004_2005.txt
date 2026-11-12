@@ -1,0 +1,5 @@
+2001 rows 30 paired 3 pixels 330
+2002 rows 30 paired 9 pixels 330
+2003 rows 30 paired 9 pixels 330
+2004 rows 30 paired 4 pixels 330
+2005 rows 30 paired 15 pixels 330
