@@ -22,6 +22,7 @@ jobs:
         run: echo "jobs=$(grep -v '^#' research/uhg/stages.txt | grep -v '^$' | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
   run:
     needs: plan
+    if: needs.plan.outputs.jobs != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 300
     strategy:
