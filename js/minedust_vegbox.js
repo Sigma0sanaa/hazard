@@ -22,6 +22,8 @@ const TT = {
     veg_title: "Уурхайн тоосжилт ба ургамал",
     veg_help: "Уурхай, жил сонгоод «Тооцоолох». Бороо навчийг угаасны дараах цэвэр Sentinel-2 зураг ба тоос дэгдсэн үеүдийн дараах тоостой зургийг хайж, хоёрын хоорондох ургамлын NDVI-ийн өөрчлөлтийг салхины 16 чигээр, уурхайгаас 3–30 км зайгаар харьцуулна. Ургамлын өсөлт бүх чигт ижил тул хасагдаж, хоорондох ялгаралтын үеүдийн салхи доод чигт үлдсэн бууралт нь уурхайн тоос. Тэр талбай дахь өвөлжөө, хаваржааг тоолно.",
     veg_mine: "Уурхай", veg_year: "Жил (6–8 сар)", veg_run: "Тооцоолох", veg_method: "Арга зүй",
+    veg_radius: "Радиус", veg_rain: "Хуурайших бороо (мм)", veg_wash: "Угаах бороо (мм)",
+    veg_radius_note: "Радиус нэмэхэд тооцоо квадратаар удаашарна.",
     veg_fetch_sat: "Sentinel-2 зураг хайж байна…", veg_fetch_wind: "Салхины мэдээ (ERA5) татаж байна…", veg_compute: "Тооцоолж байна…", veg_done: "Бэлэн ({s} секунд).",
     veg_no_pass: "Энэ зун энэ газарт цэлмэг Sentinel-2 зураг олдсонгүй.", veg_no_wind: "Тухайн цагийн салхины мэдээ олдсонгүй.", veg_err: "Алдаа: ",
     veg_passes: "Зураг: {n} өнгөрөлт ({d}), үүлгүй {c}%. Ургамалтай нүд: {v}.",
@@ -55,6 +57,8 @@ const TT = {
     veg_title: "Mine dust and vegetation",
     veg_help: "Pick a mine and a year, then Compute. The box finds a clean Sentinel-2 image taken after rain washed the leaves and a dusty one taken after dust was lifted, and compares the change of the vegetation's NDVI between them across 16 wind sectors and 3 to 30 km from the mine. Growth is alike in every direction and drops out; the fall left downwind of the episodes between the two is the mine's dust. The winter and spring camps in that area are counted.",
     veg_mine: "Mine", veg_year: "Year (June–August)", veg_run: "Compute", veg_method: "Method",
+    veg_radius: "Radius", veg_rain: "Drying rain (mm)", veg_wash: "Washing rain (mm)",
+    veg_radius_note: "A wider radius slows the run by the square of it.",
     veg_fetch_sat: "Searching Sentinel-2 passes…", veg_fetch_wind: "Loading the wind (ERA5)…", veg_compute: "Computing…", veg_done: "Ready ({s} s).",
     veg_no_pass: "No clear Sentinel-2 image of this area that summer.", veg_no_wind: "No wind data for that hour.", veg_err: "Error: ",
     veg_passes: "Imagery: {n} passes ({d}), {c}% cloud-free. Vegetation cells: {v}.",
@@ -145,8 +149,12 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   pane.style.zIndex = 418;
   pane.style.pointerEvents = "none";
   const thisYear = new Date().getUTCFullYear();
+  // the rings of a radius: the inner ones never change, so runs at different radii stay comparable
+  const RINGS = { 30: VEG.rings, 40: [...VEG.rings, 40], 50: [...VEG.rings, 40, 50] };
+  const ringsOf = (km) => RINGS[km] ?? VEG.rings;
   const st = {
     mineId: VEG_MINES[0].id, year: thisYear - 1, running: false, status: "", error: false, res: null, active: false,
+    radiusKm: VEG.radiusKm, rainMm: EPI.rainMm, washMm: EPI.washMm,
     date: addDays(iso(Date.now()), -1), hour: 12, hourRes: null, hourBusy: false, hourToken: 0, runToken: 0,
     show: { wind: true, camps: true, aod: false, veg: true }, pick: [], open: {},
     px: Object.fromEntries(PX.map((c) => [c.key, c.on])), canvas: null, drawn: 0,
@@ -196,7 +204,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     const t0 = performance.now();
     busy(true);
     try {
-      const dom = domain(m.lat, m.lon, VEG.radiusKm, VEG.cellM), e = dom.extent;
+      const dom = domain(m.lat, m.lon, st.radiusKm, VEG.cellM), e = dom.extent, rings = ringsOf(st.radiusKm);
       const grid = { west: e.w, north: e.n, dx: (e.e - e.w) / dom.w, dy: (e.n - e.s) / dom.h, w: dom.w, h: dom.h };
       // the growing season; the archive lags about five days behind today, so the current year ends where it does
       const from = `${st.year}-05-20`, lastDay = addDays(iso(Date.now()), -6), to = `${st.year}-09-10` < lastDay ? `${st.year}-09-10` : lastDay;
@@ -209,7 +217,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       const w = await getJson(`${API.archive}?${q}`);
       if (my !== st.runToken) return;
       const hours = { time: w.hourly.time ?? [], speed: Float32Array.from(w.hourly.wind_speed_10m ?? [], num), dir: Float32Array.from(w.hourly.wind_direction_10m ?? [], num), precip: Float32Array.from(w.hourly.precipitation ?? [], num), soil: Float32Array.from(w.hourly.soil_moisture_0_to_7cm ?? [], num), from: windFrom, to };
-      hours.sinceRain = hoursSinceRain(hours.precip); hours.weight = emissionWeight(hours);
+      hours.sinceRain = hoursSinceRain(hours.precip, st.rainMm); hours.weight = emissionWeight(hours, { rainMm: st.rainMm });
       st.status = { k: "veg_fetch_sat" }; render();
       const items = await search("sentinel-2-l2a", e, from, to);
       const ps = passes(items);
@@ -233,10 +241,10 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       // a dusty pass (dust lifted since the last washing rain) with the clean passes before it (washed, nothing lifted
       // since) to fill the clean picture and the earlier dusty passes since the same rain to fill its clouds; the most
       // dust times the share seen clear in both first
-      const cands = pairPlans(list, hours).slice(0, 8);
+      const cands = pairPlans(list, hours, { washMm: st.washMm }).slice(0, 8);
       const camps = await campsFor?.(e).catch(() => null) ?? null;
       if (my !== st.runToken) return;
-      st.prep = { m, dom, grid, e, hours, list, cands, camps };
+      st.prep = { m, dom, grid, e, hours, list, cands, camps, rings };
       st.pairIdx = 0;
       if (!(await compute(my))) return;
       st.status = { k: "veg_done", v: { s: Math.round((performance.now() - t0) / 1000) } };
@@ -275,8 +283,8 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   /** The result of the prepared run: the NDVI change between the chosen clean and dusty images, or, when the summer
    * holds no such pair, the single clearest image as before. Returns false when a newer run took over. */
   async function compute(my) {
-    const P = st.prep, { m, dom, grid, e, hours, list, cands, camps } = P, N = dom.w * dom.h;
-    const geo = geometry(m, dom), nr = VEG.rings.length - 1;
+    const P = st.prep, { m, dom, grid, e, hours, list, cands, camps, rings } = P, N = dom.w * dom.h;
+    const geo = geometry(m, dom, { rings }), nr = rings.length - 1;
     let res;
     if (cands.length) {
       const c = cands[st.pairIdx] ?? cands[0], B = list[c.b];
@@ -319,12 +327,12 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       }
       if (!seen) throw new Error(t("veg_no_pass"));
       const passDate = used[0].date, iPass = used[0].i;
-      const eps = episodes(hours, hours.weight).map((ep) => ({ ...ep, after: ep.i0 >= iPass, washed: ep.i0 < iPass && washedBetween(hours.precip, Math.min(ep.i1, iPass), iPass) }));
+      const eps = episodes(hours, hours.weight).map((ep) => ({ ...ep, after: ep.i0 >= iPass, washed: ep.i0 < iPass && washedBetween(hours.precip, Math.min(ep.i1, iPass), iPass, st.washMm) }));
       res = { mode: "single", value: ndvi, veg, ndvi, eps, passes: used.map((x) => x.date), passDate, iPass, cloud: Math.round((100 * seen) / N), vegN };
     }
     st.status = { k: "veg_compute" }; render();
     await new Promise((ok) => setTimeout(ok, 0));
-    const stats = sectorRingStats(res.value, res.veg, geo), def = deficits(stats, nr), reach = reaches(def);
+    const stats = sectorRingStats(res.value, res.veg, geo, { rings }), def = deficits(stats, nr), reach = reaches(def, { rings });
     const inner = Array.from({ length: VEG.sectors }, (_, s) => def.deficit[s * nr]);
     res.eps = res.eps.map((ep, k) => ({ after: false, washed: false, ...ep, k, rho: spearman(Array.from(ep.rose), inner) }));
     let windy = 0; for (const v of hours.speed) if (v >= VEG.onset) windy++;
@@ -333,6 +341,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     res.base = new Uint8Array(N);
     for (let i = 0; i < N; i++) res.base[i] = res.mode === "pair" && geo.ring[i] >= 0 && (res.fromA[i] < 0 || res.fromB[i] < 0) ? 7 : pixelClass(res.anomaly[i], geo.ring[i] >= 0, res.veg[i] === 1);
     res.grid = { west: e.w, north: e.n, dx: grid.dx, dy: grid.dy, w: dom.w, h: dom.h, scale: VEG.cellM };
+    res.rings = rings; res.radiusKm = st.radiusKm; res.rainMm = st.rainMm; res.washMm = st.washMm;
     st.pick = res.eps.map((ep) => !ep.after && !ep.washed);
     st.res = res;
     applyPick(false);
@@ -376,8 +385,8 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     r.rose = combineRoses(r.eps, st.pick);
     r.cls = classify(r.reach, r.rose);
     r.rho = spearman(Array.from(r.rose), r.inner);
-    r.area = footprintKm2(r.reach, r.cls);
-    r.exposed = campsExposed(r.camps ?? [], r.mine, r.reach, r.cls);
+    r.area = footprintKm2(r.reach, r.cls, { rings: r.rings });
+    r.exposed = campsExposed(r.camps ?? [], r.mine, r.reach, r.cls, VEG.sectors, r.rings);
     r.codes = attribute(r.base, r.geo.sector, r.rose);
     r.areas = new Float64Array(PX.length); const cellKm2 = (VEG.cellM / 1000) ** 2;
     for (let i = 0; i < N; i++) r.areas[r.codes[i]] += cellKm2;
@@ -421,8 +430,8 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   /* ---------------------------------------------------------- downloads */
   const CLS_KEY = ["clear", "unclear", "dusty"];
   function sectorsCsv(r) {
-    const nr = VEG.rings.length - 1, rows = [];
-    for (let s = 0; s < VEG.sectors; s++) for (let k = 0; k < nr; k++) rows.push([s, dir16(s), (s * 22.5).toFixed(1), VEG.rings[k], VEG.rings[k + 1], r.stats.count[s * nr + k],
+    const rg = r.rings ?? VEG.rings, nr = rg.length - 1, rows = [];
+    for (let s = 0; s < VEG.sectors; s++) for (let k = 0; k < nr; k++) rows.push([s, dir16(s), (s * 22.5).toFixed(1), rg[k], rg[k + 1], r.stats.count[s * nr + k],
       fin(r.stats.mean[s * nr + k]) ? r.stats.mean[s * nr + k].toFixed(4) : "", fin(r.def.ringMedian[k]) ? r.def.ringMedian[k].toFixed(4) : "", fin(r.def.deficit[s * nr + k]) ? r.def.deficit[s * nr + k].toFixed(4) : "", r.def.thr[k].toFixed(4),
       r.rose[s].toFixed(4), r.reach[s], CLS_KEY[r.cls[s]]]);
     return csv(["sector", "direction", "centre_deg", "ring_from_km", "ring_to_km", "veg_pixels", "mean_ndvi", "ring_median_ndvi", "deficit", "threshold", "wind_share", "reach_km", "sector_class"], rows);
@@ -464,7 +473,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
         ? [{ name: "ndvi_change_anomaly", data: no(r.anomaly, r.veg), about: t("veg_b_canom") }, { name: "ndvi_change", data: no(r.value, r.veg), about: t("veg_b_change") },
           { name: "ndvi_clean", data: no(r.ndviClean, r.veg), about: fill(t("veg_b_clean"), { d: r.cleanUsed.map((x) => x.date).join(" ") }) }, { name: "ndvi_dusty", data: no(r.ndvi, r.veg), about: fill(t("veg_b_dusty"), { d: r.dustyUsed.map((x) => x.date).join(" ") }) }]
         : [{ name: "ndvi_anomaly", data: no(r.anomaly, r.veg), about: t("veg_b_anom") }, { name: "ndvi", data: no(r.ndvi, r.veg), about: t("veg_b_ndvi") }],
-      meta: { mine: r.mine.en, mine_lat: r.mine.lat, mine_lon: r.mine.lon, year, sentinel2_passes: r.passes.join(" "), seen_pct: r.cloud, measured_inner_sectors: r.measured,
+      meta: { mine: r.mine.en, mine_lat: r.mine.lat, mine_lon: r.mine.lon, year, radius_km: r.radiusKm ?? VEG.radiusKm, rings_km: (r.rings ?? VEG.rings).join(" "), drying_rain_mm: r.rainMm ?? EPI.rainMm, washing_rain_mm: r.washMm ?? EPI.washMm, sentinel2_passes: r.passes.join(" "), seen_pct: r.cloud, measured_inner_sectors: r.measured,
         method: r.mode === "pair" ? "clean/dusty image pair" : "single image", clean_image: r.cleanUsed?.map((x) => `${x.date}:${x.pct}%`).join(" ") ?? null, dusty_image: r.dustyUsed?.map((x) => `${x.date}:${x.pct}%`).join(" ") ?? null, emission_episodes: r.eps.length, emission_episodes_picked: r.picked, emission_hours: r.episodeHours, hours_at_or_over_onset: r.windyHours, episodes_picked: r.eps.filter((ep) => st.pick[ep.k]).map((ep) => `${ep.start}/${ep.end}`).join(" ") || "none",
         dusty_sectors: Array.from(r.cls).map((c, s) => (c === 2 ? TT.en.dirs16[s] + " " + r.reach[s] + "km" : null)).filter(Boolean).join(" ") || "none", spearman_rho: fin(r.rho) ? r.rho.toFixed(3) : null,
         camps_on_dusted_vegetation_parcels: dusted.parcels, camps_on_dusted_vegetation_herder_points: dusted.herders, source: "Microsoft Planetary Computer: Sentinel-2 L2A; Open-Meteo ERA5; cadastre and herder points" },
@@ -554,7 +563,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     const w = 360 / VEG.sectors, a0 = s * w - w / 2, a1 = s * w + w / 2, pts = [];
     const at = (deg, km) => [m.lat + (km * Math.cos((deg * Math.PI) / 180)) / 110.574, m.lon + (km * Math.sin((deg * Math.PI) / 180)) / (111.32 * Math.cos((m.lat * Math.PI) / 180))];
     for (let a = a0; a <= a1 + 1e-9; a += w / 6) pts.push(at(a, outKm));
-    for (let a = a1; a >= a0 - 1e-9; a -= w / 6) pts.push(at(a, VEG.rings[0]));
+    for (let a = a1; a >= a0 - 1e-9; a -= w / 6) pts.push(at(a, (st.res?.rings ?? VEG.rings)[0]));
     return L.polygon(pts, { pane: "mineVeg", interactive: false, weight: 1, ...style });
   }
   function paint() {
@@ -570,12 +579,12 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       st.overlay = L.imageOverlay(r.image, bounds, { pane: "mineVeg", interactive: false }).addTo(map);
       for (let s = 0; s < VEG.sectors; s++) if (r.reach[s] > 0) wedge(r.mine, s, r.reach[s], { color: CLS_COLOR[r.cls[s]], weight: 2, fillColor: CLS_COLOR[r.cls[s]], fillOpacity: 0.12 }).addTo(st.wedges);
       // the downwind sectors of the picked episodes, dashed, to the mark's reach or to the second ring edge
-      for (let s = 0; s < VEG.sectors; s++) if (r.rose[s] >= 1 / VEG.sectors) wedge(r.mine, s, Math.max(r.reach[s], VEG.rings[1]), { color: "#fff", dashArray: "3 5", weight: 1.5, fill: false }).addTo(st.wedges);
+      for (let s = 0; s < VEG.sectors; s++) if (r.rose[s] >= 1 / VEG.sectors) wedge(r.mine, s, Math.max(r.reach[s], (r.rings ?? VEG.rings)[1]), { color: "#fff", dashArray: "3 5", weight: 1.5, fill: false }).addTo(st.wedges);
       st.wedges.addTo(map);
     }
     const h = st.hourRes;
     if (st.show.wind && fin(h?.sector)) {
-      wedge(r.mine, h.sector, Math.max(r.reach[h.sector], VEG.rings[0] + 1), { color: "#fff", dashArray: "4 4", fillColor: "#fff", fillOpacity: 0.12 }).addTo(st.hourWedge);
+      wedge(r.mine, h.sector, Math.max(r.reach[h.sector], (r.rings ?? VEG.rings)[0] + 1), { color: "#fff", dashArray: "4 4", fillColor: "#fff", fillOpacity: 0.12 }).addTo(st.hourWedge);
       st.hourWedge.addTo(map);
     }
   }
@@ -609,7 +618,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   function reportLines() {
     const r = st.res, rp = VEG_REPORTS[r.mine.id];
     if (!r || !rp) return [];
-    const nr = VEG.rings.length - 1, lang = TT[getLang()] ? getLang() : "mn", txt = rp[lang] ?? rp.mn, out = [];
+    const nr = (r.rings ?? VEG.rings).length - 1, lang = TT[getLang()] ? getLang() : "mn", txt = rp[lang] ?? rp.mn, out = [];
     const top = topSectors(r.rose);
     const windOk = top.some(([, s]) => rp.downwind.includes(s));
     out.push(`${fill(t("rp_wind"), { top: top.length ? top.map(([v, s]) => `${dir16(s)} ${Math.round(100 * v)}%`).join(", ") : "—" })} ${txt.wind}${r.picked ? " " + t(windOk ? "rp_ok" : "rp_no") : ""}`);
@@ -653,7 +662,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   function resultNode() {
     const r = st.res;
     if (!r) return null;
-    const ex = r.exposed, hs = fin(st.hourRes?.sector) ? campsInSector(r.camps, r.mine, st.hourRes.sector, r.reach[st.hourRes.sector]) : null;
+    const ex = r.exposed, hs = fin(st.hourRes?.sector) ? campsInSector(r.camps, r.mine, st.hourRes.sector, r.reach[st.hourRes.sector], VEG.sectors, r.rings) : null;
     const camp = (c) => `${c.parcels} ${t("veg_parcels")}, ${c.herders} ${t("veg_herders")}.`;
     const sum = (ks) => ({ parcels: ks.reduce((a, k) => a + r.campsByClass[k].parcels, 0), herders: ks.reduce((a, k) => a + r.campsByClass[k].herders, 0) });
     const sub = r.mode === "pair" ? `${r.clean} → ${r.dusty}` : String(r.year);
@@ -705,6 +714,13 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       el("div", { class: "md-form" },
         el("label", {}, el("span", { text: t("veg_mine") }), el("select", { class: "field", onchange: (e) => { st.mineId = e.target.value; const m = mine(); map.setView([m.lat, m.lon], 9); } }, ...VEG_MINES.map((m) => el("option", { value: m.id, text: mineName(m), selected: m.id === st.mineId })))),
         el("label", {}, el("span", { text: t("veg_year") }), el("select", { class: "field", onchange: (e) => { st.year = Number(e.target.value); } }, ...years.map((y) => el("option", { value: y, text: y, selected: y === st.year }))))),
+      el("div", { class: "row" },
+        el("label", {}, el("span", { text: t("veg_radius"), title: t("veg_radius_note") }), el("select", { class: "field", onchange: (e) => { st.radiusKm = Number(e.target.value); } },
+          ...[30, 40, 50].map((km) => el("option", { value: km, text: `${km} км`, selected: km === st.radiusKm })))),
+        el("label", {}, el("span", { text: t("veg_rain") }), el("input", { type: "number", class: "field", min: "0.2", max: "10", step: "0.2", value: String(st.rainMm),
+          onchange: (e) => { const v = Number(e.target.value); if (v > 0) st.rainMm = v; e.target.value = String(st.rainMm); } })),
+        el("label", {}, el("span", { text: t("veg_wash") }), el("input", { type: "number", class: "field", min: "0.5", max: "20", step: "0.5", value: String(st.washMm),
+          onchange: (e) => { const v = Number(e.target.value); if (v > 0) st.washMm = v; e.target.value = String(st.washMm); } }))),
       el("div", { class: "btnrow" }, el("button", { class: "btn aoi-run", type: "button", text: t("veg_run"), disabled: st.running, onclick: run }), el("button", { class: "btn small", type: "button", text: t("veg_method"), onclick: () => onMethods?.("veg") })),
       st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status.v && typeof st.status.v === "object" ? fill(t(st.status.k), st.status.v) : t(st.status.k) + (typeof st.status.v === "string" ? st.status.v : "") }),
       r && el("section", { class: "veg-panel" },
