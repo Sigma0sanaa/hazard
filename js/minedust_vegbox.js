@@ -160,7 +160,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     date: addDays(iso(Date.now()), -1), hour: 12, hourRes: null, hourBusy: false, hourToken: 0, runToken: 0,
     show: { wind: true, camps: true, aod: false, veg: true }, pick: [], open: {}, hourEp: null,
     px: Object.fromEntries(PX.map((c) => [c.key, c.on])), canvas: null, drawn: 0,
-    overlay: null, wedges: L.layerGroup(), hourWedge: L.layerGroup(),
+    overlay: null, wedges: L.layerGroup(), hourWedge: L.layerGroup(), pits: L.layerGroup(),
   };
   const mine = () => VEG_MINES.find((m) => m.id === st.mineId) ?? VEG_MINES[0];
   const mineName = (m) => (getLang() === "mn" ? m.mn : m.en);
@@ -588,6 +588,28 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       ] } : null,
     });
   }
+  // the mine's quarry outlines (data/mine_pits.geojson, built by scripts/build-mine-pits.mjs from OpenStreetMap):
+  // fetched once per session, and simply absent until that workflow has run
+  let pitData = null, pitAsked = false;
+  async function loadPits() {
+    if (pitAsked) return pitData;
+    pitAsked = true;
+    try { const r = await fetch("data/mine_pits.geojson"); pitData = r.ok ? await r.json() : null; } catch { pitData = null; }
+    if (pitData) paint();
+    return pitData;
+  }
+  /** The quarry outlines of one mine as thin lines, so the pit is told from the steppe around it. */
+  function paintPits(mineId) {
+    st.pits.clearLayers(); st.pits.remove();
+    const fs = (pitData?.features ?? []).filter((f) => f.properties?.mine === mineId);
+    if (!fs.length) return;
+    for (const f of fs) {
+      const pts = f.geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
+      L.polygon(pts, { pane: "mineVeg", interactive: false, color: "#fff", weight: 1, opacity: 0.9, fill: false }).addTo(st.pits);
+    }
+    st.pits.addTo(map);
+  }
+
   /** A ring sector as a polygon from the inner edge to `outKm`. */
   function wedge(m, s, outKm, style) {
     const w = 360 / VEG.sectors, a0 = s * w - w / 2, a1 = s * w + w / 2, pts = [];
@@ -600,6 +622,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     st.overlay?.remove(); st.overlay = null;
     st.wedges.clearLayers(); st.wedges.remove();
     st.hourWedge.clearLayers(); st.hourWedge.remove();
+    st.pits.clearLayers(); st.pits.remove();
     const r = st.res;
     campMarks.show(Boolean(r) && st.active && st.show.camps);
     windMarks.show(Boolean(r) && st.active && st.show.wind && Boolean(st.hourRes) && fin(st.hourRes.speed));
@@ -611,6 +634,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       // the downwind sectors of the picked episodes, dashed, to the mark's reach or to the second ring edge
       for (let s = 0; s < VEG.sectors; s++) if (r.rose[s] >= 1 / VEG.sectors) wedge(r.mine, s, Math.max(r.reach[s], (r.rings ?? VEG.rings)[1]), { color: "#fff", dashArray: "3 5", weight: 1.5, fill: false }).addTo(st.wedges);
       st.wedges.addTo(map);
+      if (pitData) paintPits(r.mine.id); else loadPits();
     }
     const h = st.hourRes;
     if (st.show.wind && fin(h?.sector)) {
