@@ -331,6 +331,50 @@ export function pairCandidates(list, { precip, weight }, { washMm = EPI.washMm, 
   return out.sort((x, y) => y.score - x.score);
 }
 
+/** Composite plans. A single clean image is often cloudy right where it matters: it is taken soon after rain, and the
+ * clouds of that rain linger. So every clean pass (a washing rain before it, no emission since) within maxGapHours
+ * before a dusty pass fills the clean picture, latest first, and the dusty pass's own clouds are filled from earlier
+ * passes since the same washing rain that already had dust lifted, latest first. The dust on the leaves at the dusty
+ * pass is all that was lifted since that rain, so `weight` is the emission weight since the rain. Each list entry is
+ * `{ i, share, mask? }`, mask a clear/not-clear grid of the same size for every pass (a coarse one will do); `cover`
+ * is the share of cells seen clear in both composites (1 when no masks are given). Sorted by weight times cover. */
+export function pairPlans(list, { precip, weight }, { washMm = EPI.washMm, minShare = 0.5, maxGapHours = 30 * 24 } = {}) {
+  const lw = lastWash(precip, washMm), cum = new Float64Array(weight.length + 1);
+  for (let h = 0; h < weight.length; h++) cum[h + 1] = cum[h] + (weight[h] > 0 ? weight[h] : 0);
+  const between = (h0, h1) => cum[Math.min(h1, weight.length - 1) + 1] - cum[Math.max(h0, -1) + 1];
+  const inRange = (p) => p.i >= 0 && p.i < weight.length && p.share > 0.05;
+  const isClean = (p) => inRange(p) && lw[p.i] >= 0 && between(lw[p.i], p.i) === 0;
+  const isDusty = (p) => inRange(p) && lw[p.i] >= 0 && between(lw[p.i], p.i) > 0;
+  const order = (ks) => ks.sort((x, y) => list[y].i - list[x].i);
+  const out = [];
+  list.forEach((pb, b) => {
+    if (!isDusty(pb) || !(pb.share >= minShare)) return;
+    const rain = lw[pb.i];
+    const clean = order(list.map((p, k) => k).filter((k) => isClean(list[k]) && list[k].i < pb.i && pb.i - list[k].i <= maxGapHours));
+    if (!clean.length) return;
+    const dusty = [b, ...order(list.map((p, k) => k).filter((k) => k !== b && isDusty(list[k]) && lw[list[k].i] === rain && list[k].i < pb.i))];
+    let cover = 1;
+    if (pb.mask) {
+      const n = pb.mask.length, seen = (ks) => { const m = new Uint8Array(n); for (const k of ks) { const mk = list[k].mask; if (mk) for (let c = 0; c < n; c++) if (mk[c]) m[c] = 1; } return m; };
+      const a = seen(clean), d = seen(dusty);
+      let both = 0; for (let c = 0; c < n; c++) if (a[c] && d[c]) both++;
+      cover = both / n;
+    }
+    const w = between(rain, pb.i);
+    out.push({ b, clean, dusty, rain, weight: w, cover, score: w * cover });
+  });
+  return out.sort((x, y) => y.score - x.score);
+}
+
+/** Per pixel, the value of the first pass (in the given order) that saw it clear; `from` names that pass, -1 none. */
+export function composite(values, clears) {
+  const n = values[0].length, value = new Float32Array(n).fill(NaN), from = new Int8Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < values.length; k++) if (clears[k][i]) { value[i] = values[k][i]; from[i] = k; break; }
+  }
+  return { value, from };
+}
+
 /** NDVI of the dusty image minus the clean one, on the clean image's vegetation seen clear in both; NaN elsewhere. */
 export function ndviChange(clean, dusty, vegClean) {
   const delta = new Float32Array(clean.length).fill(NaN), mask = new Uint8Array(clean.length);
