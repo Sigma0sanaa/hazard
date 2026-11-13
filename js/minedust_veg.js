@@ -232,11 +232,12 @@ export function episodes(hours, weight, { gapHours = EPI.gapHours, minHours = EP
   let i0 = -1, last = -1;
   const close = () => {
     if (i0 < 0) return;
-    const e = { i0, i1: last, start: hours.time[i0], end: hours.time[last], hours: 0, weight: 0, umax: 0, rose: new Float32Array(n), soil: NaN, sinceRain: hours.sinceRain[i0] };
+    const e = { i0, i1: last, start: hours.time[i0], end: hours.time[last], hours: 0, weight: 0, umax: 0, peak: i0, rose: new Float32Array(n), soil: NaN, sinceRain: hours.sinceRain[i0] };
     let soilSum = 0, soilN = 0;
     for (let h = i0; h <= last; h++) {
       const w = weight[h];
       if (!(w > 0)) continue;
+      if (w > weight[e.peak] || !(weight[e.peak] > 0)) e.peak = h; // the heaviest hour, for the wind map
       e.hours++; e.weight += w; e.umax = Math.max(e.umax, hours.speed[h]);
       e.rose[sectorOf((hours.dir[h] + 180) % 360, n)] += w;
       if (Number.isFinite(hours.soil[h])) { soilSum += hours.soil[h]; soilN++; }
