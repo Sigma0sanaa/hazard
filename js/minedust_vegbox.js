@@ -314,14 +314,17 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       const ranked = list.filter((x) => x.share > 0.05).sort((a, b) => b.share - a.share || b.p.t0 - a.p.t0);
       const order = ranked.filter((x) => Math.abs(x.p.t0 - ranked[0].p.t0) <= 20 * 86400000);
       const ndvi = new Float32Array(N).fill(NaN), veg = new Uint8Array(N), seenMask = new Uint8Array(N), used = [];
+      // which of the used passes filled each pixel, so that the true-colour picture is built from the same ones
+      const fromS = new Int16Array(N).fill(-1);
       let seen = 0, vegN = 0;
       for (const x of order.slice(0, 3)) {
         const r = await readPass(grid, x.p, N);
         if (my !== st.runToken) return false;
         let filled = 0;
+        const slot = used.length; // the index this pass gets, and it is pushed only when it filled something
         for (let i = 0; i < N; i++) {
           if (seenMask[i] || !r.clear[i]) continue;
-          seenMask[i] = 1; seen++; filled++;
+          seenMask[i] = 1; seen++; filled++; fromS[i] = slot;
           if (r.veg[i]) { veg[i] = 1; ndvi[i] = r.ndvi[i]; vegN++; }
         }
         if (filled) used.push(x);
@@ -330,7 +333,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       if (!seen) throw new Error(t("veg_no_pass"));
       const passDate = used[0].date, iPass = used[0].i;
       const eps = episodes(hours, hours.weight).map((ep) => ({ ...ep, after: ep.i0 >= iPass, washed: ep.i0 < iPass && washedBetween(hours.precip, Math.min(ep.i1, iPass), iPass, st.washMm) }));
-      res = { mode: "single", value: ndvi, veg, ndvi, eps, passes: used.map((x) => x.date), passDate, iPass, cloud: Math.round((100 * seen) / N), vegN };
+      res = { mode: "single", value: ndvi, veg, ndvi, eps, passes: used.map((x) => x.date), passesS: used.map((x) => x.p), fromS, passDate, iPass, cloud: Math.round((100 * seen) / N), vegN };
     }
     st.status = { k: "veg_compute" }; render();
     await new Promise((ok) => setTimeout(ok, 0));
@@ -585,6 +588,11 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       compare: r.mode === "pair" ? { start: true, pairs: [
         { key: "rgb", label: t("cmp_rgb"), left: { label: `${t("cmp_clean")} ${r.clean}`, load: () => rgbComposite(r.grid, r.passesA, r.fromA) }, right: { label: `${t("cmp_dusty")} ${r.dusty}`, load: () => rgbComposite(r.grid, r.passesB, r.fromB) } },
         { key: "ndvi", label: t("cmp_ndvi"), left: { label: `${t("cmp_clean")} ${r.clean}`, load: async () => ndviCanvas(r.grid, r.ndviClean) }, right: { label: `${t("cmp_dusty")} ${r.dusty}`, load: async () => ndviCanvas(r.grid, r.ndvi) } },
+      ] } : r.passesS ? { start: false, pairs: [
+        // no clean and dusty pair to swipe, so the NDVI of the one image against its own true colour
+        { key: "ndvi_rgb", label: `${t("cmp_ndvi")} / ${t("cmp_rgb")}`,
+          left: { label: `${t("cmp_ndvi")} ${r.passDate}`, load: async () => ndviCanvas(r.grid, r.ndvi) },
+          right: { label: `${t("cmp_rgb")} ${r.passDate}`, load: () => rgbComposite(r.grid, r.passesS, r.fromS) } },
       ] } : null,
     });
   }
