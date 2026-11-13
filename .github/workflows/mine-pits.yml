@@ -1,0 +1,33 @@
+# Builds data/mine_pits.geojson (the quarry outlines around every mine) from OpenStreetMap, commits it, then asks the
+# site workflow to redeploy. Run by hand once: Actions -> Mine pits -> Run workflow. It also refreshes itself monthly.
+name: Mine pits
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 7 * *"
+permissions:
+  contents: write
+  actions: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test
+      - run: node scripts/build-mine-pits.mjs
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/mine_pits.geojson
+          git diff --cached --quiet || git commit -m "Update OpenStreetMap mine pit outlines"
+          git pull --rebase origin main
+          git push
+      - name: Redeploy site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
