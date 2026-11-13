@@ -133,8 +133,12 @@ export function createViewer({ t }) {
       // with the satellite picture switched off the result stands alone, so it is drawn even when not asked for
       if (cmp.showRes || !showSat) { ctx.globalAlpha = showPair ? Number(alpha.value) : 1; ctx.drawImage(cur.picture(), 0, 0); ctx.globalAlpha = 1; }
     } else {
-      const sat = showSat && bg.key === cur.grid && bg.img;
-      if (sat) { ctx.imageSmoothingEnabled = k < 1; ctx.drawImage(bg.img.canvas, 0, 0); ctx.imageSmoothingEnabled = false; }
+      // the fresh 10 m backdrop of a 60 km grid takes a while to arrive; when the swipe pair is already in memory its
+      // dusty picture stands in meanwhile, so switching the swipe off does not leave the result on bare black
+      const firstKey = cur.compare?.pairs?.[0]?.key, slot = firstKey ? cmp.imgs.get(firstKey) : null;
+      const loaded = showSat && bg.key === cur.grid && bg.img ? bg.img.canvas : null;
+      const sat = loaded || (showSat && slot?.state === "ready" ? slot.right : null);
+      if (sat) { ctx.imageSmoothingEnabled = k < 1; ctx.drawImage(sat, 0, 0); ctx.imageSmoothingEnabled = false; }
       ctx.globalAlpha = sat ? Number(alpha.value) : 1;
       ctx.drawImage(cur.picture(), 0, 0);
       ctx.globalAlpha = 1;
