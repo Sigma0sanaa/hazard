@@ -413,3 +413,5 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
 .veg-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 2px; vertical-align: -1px; }
 .veg-episodes { max-height: 220px; overflow-y: auto; font-size: 11px; }
 .veg-episodes .check { margin: 2px 0; }
+.veg-ep-go { margin-left: auto; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; font-size: 12px; line-height: 18px; }
+.veg-ep-go.on { background: rgba(159, 211, 255, .25); }
