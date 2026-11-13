@@ -123,13 +123,15 @@ export function createViewer({ t }) {
     if (pair) {
       // left picture up to the line, right picture beyond it; the result over both when switched on
       const sx = ox + (cmp.split * w) / k;
-      if (imgs?.state === "ready") {
+      const showPair = showSat && imgs?.state === "ready";
+      if (showPair) {
         ctx.imageSmoothingEnabled = k < 1;
         ctx.save(); ctx.beginPath(); ctx.rect(ox, oy, sx - ox, h / k); ctx.clip(); ctx.drawImage(imgs.left, 0, 0); ctx.restore();
         ctx.save(); ctx.beginPath(); ctx.rect(sx, oy, w / k, h / k); ctx.clip(); ctx.drawImage(imgs.right, 0, 0); ctx.restore();
         ctx.imageSmoothingEnabled = false;
       }
-      if (cmp.showRes) { ctx.globalAlpha = Number(alpha.value); ctx.drawImage(cur.picture(), 0, 0); ctx.globalAlpha = 1; }
+      // with the satellite picture switched off the result stands alone, so it is drawn even when not asked for
+      if (cmp.showRes || !showSat) { ctx.globalAlpha = showPair ? Number(alpha.value) : 1; ctx.drawImage(cur.picture(), 0, 0); ctx.globalAlpha = 1; }
     } else {
       const sat = showSat && bg.key === cur.grid && bg.img;
       if (sat) { ctx.imageSmoothingEnabled = k < 1; ctx.drawImage(bg.img.canvas, 0, 0); ctx.imageSmoothingEnabled = false; }
@@ -137,7 +139,7 @@ export function createViewer({ t }) {
       ctx.drawImage(cur.picture(), 0, 0);
       ctx.globalAlpha = 1;
     }
-    if (pair) {
+    if (pair && showSat) {
       // the line, its handle and the names of the two sides, in screen pixels
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const x = cmp.split * w;
