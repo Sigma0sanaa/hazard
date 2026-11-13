@@ -41,6 +41,7 @@ const TT = {
     px_heavy: "Их тоостой ургамал (NDVI −0.10-аас доош)", px_mid: "Дунд тоостой ургамал (−0.10…−0.05)", px_light: "Бага тоостой ургамал (−0.05…−0.02)", px_clean: "Цэвэр ургамал (−0.02-оос дээш)", px_bare: "Ургамалгүй эсвэл ус", px_none: "Торны гадна", px_other: "Тоостой ч сонгосон үеүдийн салхины чигт биш (өөр шалтгаан)", px_cloud: "Үүлтэй: аль ч зурагт цэлмэг харагдаагүй (мэдээгүй)",
     veg_pair: "Цэвэр зураг (бороо навч угаасны дараа, тоос дэгдээгүй): {a}. Тоостой зураг (сүүлийн угаах борооноос хойш тоос дэгдсэн): {b}. Хувь нь 3–30 км-ийн пикселийн аль зургаас авсныг заана; нэг зурагт үүлтэй хэсгийг нөгөөгөөр нөхсөн. Борооноос хойших ялгаралтын жин {w}.", veg_pair_sel: "Зургийн хос", veg_pair_opt: "{a} → {b} · жин {w} · {c} % цэлмэг", veg_single: "Энэ зун «бороо угаасны дараах цэвэр зураг → ялгаралтын дараах тоостой зураг» хос олдсонгүй: ганц зургаар (хуучин аргаар) тооцлоо.",
     veg_classes_pair: "Пиксел бүрийн ангилал (100 м): цэвэр ба тоостой зургийн хооронд ургамлын NDVI хэр буурсныг ижил зайн цагирагийн медиантай харьцуулсан.", cmp_rgb: "Өнгөт зураг", cmp_ndvi: "NDVI", cmp_clean: "Цэвэр", cmp_dusty: "Тоостой", ep_help_pair: "Цэвэр ба тоостой зургийн хоорондох ялгаралтын үеүд (бороо зогссоноос ≥24 ц, хөрс хуурай, салхи ≥6 м/с; жин (u−6)·u²). Тэдгээрийн салхи доод чиг уурхайн тоосыг тодорхойлно.",
+    ep_go: "Салхины зургийг энэ үеийн хамгийн хүчтэй цаг руу", ep_hour_note: "Энэ нь ялгаралтын үе №{k}-ийн хамгийн их тоос дэгдээсэн цаг (ERA5); газрын зураг дээрх цагаан шугам салхины чиг.",
     ep_title: "Ялгаралтын үе", ep_help: "ERA5-ийн цаг тутмын салхи, хур тунадас, хөрсний чийг (0–7 см): сүүлийн ≥2 мм (24 цагийн нийлбэр) бороо зогссоноос хойш 24 цаг өнгөрсөн, хөрсний чийг зуны медианаас илүүгүй, салхи ≥6 м/с цагууд тоос дэгдээнэ; жин (u−6)·u². Зэргэлдээ цагууд (≤6 цагийн завсартай) нэг үе. Зургийн өдрөөс өмнөх, ≥5 мм борооноор угаагдаагүй үеүд л тооцоонд орно.",
     ep_all: "Бүгдийг нэгтгэж харах", ep_none: "Ялгаралтын үе олдсонгүй: салхи сул эсвэл хөрс чийгтэй байсан.", ep_count: "{n} үе, {h} цаг (≥6 м/с салхитай цагуудын {p} %); тооцоонд {k} үе. Зургийн өдөр {d}.",
     ep_line: "№{k} · {a} – {b} · {h} ц · ≤{u} м/с · {dirs} · хөрс {s} · бороо {r} · ρ {rho}", ep_after: "(зургийн дараа)", ep_washed: "(угаагдсан)", ep_norain: "бүртгэгдээгүй", ep_days: "{d} хоногийн өмнө",
@@ -74,6 +75,7 @@ const TT = {
     veg_limits: "NDVI also changes with soil, grazing and roads. 100 m cells. The contrast is relative, not g/m². Less vegetation in a dusty year can have other causes.",
     cls_dusty: "dusty", cls_unclear: "unclear", cls_clear: "clear", veg_km: "km",
     px_heavy: "Heavily dusted vegetation (NDVI below −0.10)", px_mid: "Moderately dusted vegetation (−0.10 to −0.05)", px_light: "Lightly dusted vegetation (−0.05 to −0.02)", px_clean: "Clean vegetation (above −0.02)", px_bare: "No vegetation or water", px_none: "Outside the grid", px_other: "Dusted but not downwind of the picked episodes (another cause)", px_cloud: "Cloud: not seen clear in any image (no data)",
+    ep_go: "Put the wind map on this episode's heaviest hour", ep_hour_note: "This is the hour of emission episode No. {k} that lifted the most dust (ERA5); the white line on the map is the wind.",
     ep_title: "Emission episodes", ep_help: "From ERA5 hourly wind, precipitation and soil moisture (0–7 cm): an hour lifts dust when 24 h have passed since the end of the last rain of 2 mm or more (24 h sum), the soil is no wetter than the summer median and the wind is 6 m/s or more; weight (u−6)·u². Neighbouring hours (gaps up to 6 h) form one episode. Only episodes before the image date and not washed off by rain of 5 mm or more are counted.",
     ep_all: "Show all together", ep_none: "No emission episode: the wind was light or the ground wet.", ep_count: "{n} episodes, {h} hours ({p} % of the hours at 6 m/s or more); {k} counted. Image date {d}.",
     ep_line: "No. {k} · {a} – {b} · {h} h · ≤{u} m/s · {dirs} · soil {s} · rain {r} · ρ {rho}", ep_after: "(after the image)", ep_washed: "(washed off)", ep_norain: "none recorded", ep_days: "{d} days before",
@@ -156,9 +158,9 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     mineId: VEG_MINES[0].id, year: thisYear - 1, running: false, status: "", error: false, res: null, active: false,
     radiusKm: VEG.radiusKm, rainMm: EPI.rainMm, washMm: EPI.washMm,
     date: addDays(iso(Date.now()), -1), hour: 12, hourRes: null, hourBusy: false, hourToken: 0, runToken: 0,
-    show: { wind: true, camps: true, aod: false, veg: true }, pick: [], open: {},
+    show: { wind: true, camps: true, aod: false, veg: true }, pick: [], open: {}, hourEp: null,
     px: Object.fromEntries(PX.map((c) => [c.key, c.on])), canvas: null, drawn: 0,
-    overlay: null, wedges: L.layerGroup(), hourWedge: L.layerGroup(), pits: L.layerGroup(),
+    overlay: null, wedges: L.layerGroup(), hourWedge: L.layerGroup(),
   };
   const mine = () => VEG_MINES.find((m) => m.id === st.mineId) ?? VEG_MINES[0];
   const mineName = (m) => (getLang() === "mn" ? m.mn : m.en);
@@ -251,7 +253,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       // the whole 30 km domain in view, clear of the side panel on a wide screen
       map.fitBounds([[e.s, e.w], [e.n, e.e]], { paddingTopLeft: [window.innerWidth > 1000 ? 360 : 10, 70], paddingBottomRight: [10, 110] });
       openView();
-      loadHour();
+      autoHour(null, true);
     } catch (err) {
       console.error(err);
       st.error = true;
@@ -270,7 +272,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     busy(true);
     const t0 = performance.now(), my = ++st.runToken;
     try {
-      if (await compute(my)) { st.status = { k: "veg_done", v: { s: Math.round((performance.now() - t0) / 1000) } }; openView(); }
+      if (await compute(my)) { st.status = { k: "veg_done", v: { s: Math.round((performance.now() - t0) / 1000) } }; openView(); autoHour(null, true); }
     } catch (err) {
       console.error(err);
       st.error = true; st.status = { k: "veg_err", v: err.message };
@@ -358,6 +360,16 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     const my = ++st.hourToken;
     st.hourBusy = true; st.hourRes = null; render();
     try {
+      // an hour of the run's own series (the emission hours are there) needs no new request
+      const key = `${st.date}T${String(st.hour).padStart(2, "0")}:00`, k = r.hours.time.indexOf(key);
+      if (k >= 0 && fin(r.hours.speed[k]) && fin(r.hours.dir[k])) {
+        const u = r.hours.speed[k], d = r.hours.dir[k];
+        st.hourRes = { speed: u, from: d, sector: u >= VEG.onset ? sectorOf((d + 180) % 360) : null, time: key, weight: r.hours.weight[k] };
+        st.hourBusy = false;
+        if (st.show.aod) requestSat?.({ key: "aod_maiac", on: true, date: st.date });
+        paint(); render();
+        return;
+      }
       const age = (Date.now() - Date.parse(st.date + "T00:00:00Z")) / 86400000;
       const api = age > 85 ? API.archive : API.forecast;
       const q = new URLSearchParams({ latitude: r.mine.lat.toFixed(3), longitude: r.mine.lon.toFixed(3), start_date: st.date, end_date: st.date, timezone: TZ, wind_speed_unit: "ms", hourly: "wind_speed_10m,wind_direction_10m" });
@@ -374,6 +386,24 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     st.hourBusy = false;
     if (st.show.aod) requestSat?.({ key: "aod_maiac", on: true, date: st.date });
     paint(); render();
+  }
+
+  /** Put the wind map on the heaviest hour of an emission episode: the given one, or else the heaviest picked one when
+   * the chosen hour lies in no picked episode. Called after a run, when the picks change, and from the episode list. */
+  function autoHour(ep = null, force = false) {
+    const r = st.res;
+    if (!r?.eps?.length) return;
+    if (!ep) {
+      const key = `${st.date}T${String(st.hour).padStart(2, "0")}:00`, k = r.hours.time.indexOf(key);
+      const inPicked = k >= 0 && r.eps.some((e) => st.pick[e.k] && k >= e.i0 && k <= e.i1);
+      if (inPicked && !force) return;
+      const picked = r.eps.filter((e) => st.pick[e.k]);
+      ep = (picked.length ? picked : r.eps).reduce((a, b) => (b.weight > a.weight ? b : a));
+    }
+    const tm = r.hours.time[ep.peak];
+    if (!tm) return;
+    st.date = tm.slice(0, 10); st.hour = Number(tm.slice(11, 13)); st.hourEp = ep.k;
+    loadHour();
   }
 
   /** Everything that follows from the picked episodes: their combined rose, the sector classes, the footprint, ρ, the
@@ -393,7 +423,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     r.campsByClass = classifyCamps(r);
     r.picked = st.pick.filter(Boolean).length;
     classCanvas(r); // drawn once per set of switched-on classes and picked episodes
-    if (redraw) { paint(); onResult(); render(); }
+    if (redraw) { paint(); onResult(); render(); autoHour(); }
   }
 
   /* ---------------------------------------------------------------- map */
@@ -558,28 +588,6 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       ] } : null,
     });
   }
-  // the mine's quarry outlines (data/mine_pits.geojson, built by scripts/build-mine-pits.mjs from OpenStreetMap):
-  // fetched once per session, and simply absent until that workflow has run
-  let pitData = null, pitAsked = false;
-  async function loadPits() {
-    if (pitAsked) return pitData;
-    pitAsked = true;
-    try { const r = await fetch("data/mine_pits.geojson"); pitData = r.ok ? await r.json() : null; } catch { pitData = null; }
-    if (pitData) paint();
-    return pitData;
-  }
-  /** The quarry outlines of one mine as thin lines, so the pit is told from the steppe around it. */
-  function paintPits(mineId) {
-    st.pits.clearLayers(); st.pits.remove();
-    const fs = (pitData?.features ?? []).filter((f) => f.properties?.mine === mineId);
-    if (!fs.length) return;
-    for (const f of fs) {
-      const pts = f.geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
-      L.polygon(pts, { pane: "mineVeg", interactive: false, color: "#fff", weight: 1, opacity: 0.9, fill: false }).addTo(st.pits);
-    }
-    st.pits.addTo(map);
-  }
-
   /** A ring sector as a polygon from the inner edge to `outKm`. */
   function wedge(m, s, outKm, style) {
     const w = 360 / VEG.sectors, a0 = s * w - w / 2, a1 = s * w + w / 2, pts = [];
@@ -592,7 +600,6 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     st.overlay?.remove(); st.overlay = null;
     st.wedges.clearLayers(); st.wedges.remove();
     st.hourWedge.clearLayers(); st.hourWedge.remove();
-    st.pits.clearLayers(); st.pits.remove();
     const r = st.res;
     campMarks.show(Boolean(r) && st.active && st.show.camps);
     windMarks.show(Boolean(r) && st.active && st.show.wind && Boolean(st.hourRes) && fin(st.hourRes.speed));
@@ -604,7 +611,6 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
       // the downwind sectors of the picked episodes, dashed, to the mark's reach or to the second ring edge
       for (let s = 0; s < VEG.sectors; s++) if (r.rose[s] >= 1 / VEG.sectors) wedge(r.mine, s, Math.max(r.reach[s], (r.rings ?? VEG.rings)[1]), { color: "#fff", dashArray: "3 5", weight: 1.5, fill: false }).addTo(st.wedges);
       st.wedges.addTo(map);
-      if (pitData) paintPits(r.mine.id); else loadPits();
     }
     const h = st.hourRes;
     if (st.show.wind && fin(h?.sector)) {
@@ -621,6 +627,7 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
     else if (h?.error) out.push(t(h.error));
     else if (h && !fin(h.sector)) out.push(fill(t("veg_wind_line"), { t: h.time.replace("T", " "), u: h.speed.toFixed(1), from: dir16(sectorOf(h.from)), deg: Math.round(h.from), to: dir16(sectorOf((h.from + 180) % 360)), r: r.reach[sectorOf((h.from + 180) % 360)].toFixed(0) }) + " " + t("veg_wind_none"));
     else if (h) out.push(fill(t("veg_wind_line"), { t: h.time.replace("T", " "), u: h.speed.toFixed(1), from: dir16(sectorOf(h.from)), deg: Math.round(h.from), to: dir16(h.sector), r: r.reach[h.sector].toFixed(0) }));
+    if (h && !h.error && fin(st.hourEp) && r.eps[st.hourEp]) out.push(fill(t("ep_hour_note"), { k: st.hourEp + 1 }));
     const top = topSectors(r.rose);
     out.push(r.picked ? fill(t("veg_rose"), { dirs: top.length ? top.map(([v, s]) => `${dir16(s)} ${Math.round(100 * v)}%`).join(", ") : "—" }) : t("veg_rose_none"));
     return out;
@@ -719,8 +726,8 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
   function render() {
     const r = st.res, years = []; for (let y = 2017; y <= thisYear; y++) years.push(y);
     const hourForm = r && el("div", { class: "md-form" },
-      el("label", {}, el("span", { text: t("veg_date") }), el("input", { class: "field", type: "date", value: st.date, min: "1940-01-01", max: addDays(iso(Date.now()), 14), onchange: (e) => { if (e.target.value) { st.date = e.target.value; loadHour(); } } })),
-      el("label", {}, el("span", { text: t("veg_hour") }), el("select", { class: "field", onchange: (e) => { st.hour = Number(e.target.value); loadHour(); } }, ...Array.from({ length: 24 }, (_, h) => el("option", { value: h, text: String(h).padStart(2, "0") + ":00", selected: h === st.hour })))));
+      el("label", {}, el("span", { text: t("veg_date") }), el("input", { class: "field", type: "date", value: st.date, min: "1940-01-01", max: addDays(iso(Date.now()), 14), onchange: (e) => { if (e.target.value) { st.date = e.target.value; st.hourEp = null; loadHour(); } } })),
+      el("label", {}, el("span", { text: t("veg_hour") }), el("select", { class: "field", onchange: (e) => { st.hour = Number(e.target.value); st.hourEp = null; loadHour(); } }, ...Array.from({ length: 24 }, (_, h) => el("option", { value: h, text: String(h).padStart(2, "0") + ":00", selected: h === st.hour })))));
     let epsPick = null;
     if (r) {
       const countable = r.eps.filter((ep) => !ep.after && !ep.washed), picked = countable.filter((ep) => st.pick[ep.k]).length;
@@ -730,7 +737,8 @@ export function createVegBox({ map, getLang, campsFor, requestSat, onMethods, vi
         el("label", { class: "check" }, all, el("b", { text: t("ep_all") })),
         el("div", { class: "veg-episodes" }, ...[...r.eps].reverse().map((ep) => el("label", { class: "check" + (ep.after || ep.washed ? " off" : "") },
           el("input", { type: "checkbox", checked: Boolean(st.pick[ep.k]), onchange: (e) => { st.pick[ep.k] = e.target.checked; applyPick(); } }),
-          el("span", { text: `№${ep.k + 1} · ${hhmm(ep.start)} · ${ep.hours} ${getLang() === "mn" ? "ц" : "h"}${ep.after ? " " + t("ep_after") : ep.washed ? " " + t("ep_washed") : ""}` }))))) : null;
+          el("span", { text: `№${ep.k + 1} · ${hhmm(ep.start)} · ${ep.hours} ${getLang() === "mn" ? "ц" : "h"}${ep.after ? " " + t("ep_after") : ep.washed ? " " + t("ep_washed") : ""}` }),
+          el("button", { class: "veg-ep-go" + (st.hourEp === ep.k ? " on" : ""), type: "button", text: "⌖", title: t("ep_go"), "aria-label": `${t("ep_go")} №${ep.k + 1}`, onclick: (e) => { e.preventDefault(); autoHour(ep); } }))))) : null;
     }
     box.replaceChildren(...[
       el("h4", { class: "md-title", text: t("veg_title") }),
