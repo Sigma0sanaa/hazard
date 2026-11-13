@@ -107,7 +107,7 @@ export const PX = [
   { code: 3, key: "mid", color: [170, 100, 40], on: true, paint: true },
   { code: 4, key: "light", color: [215, 165, 95], on: true, paint: true },
   { code: 5, key: "clean", color: [70, 150, 80], on: true, paint: true },
-  { code: 6, key: "other", color: [150, 150, 200], on: false, paint: true },
+  { code: 6, key: "other", color: [150, 150, 200], on: true, paint: true }, // shown by default: hiding it would make the dust seem to follow the wind by construction
   { code: 7, key: "cloud", color: [215, 215, 225], on: true, paint: true },
 ];
 export function pixelClass(anomaly, inRing, isVeg) {
