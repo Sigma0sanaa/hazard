@@ -127,6 +127,8 @@ export function check() {
   const ep3 = episodes({ time: times, speed: spd, dir: dirs, soil: sm, sinceRain: sr }, w);
   yes("a gap of eight splits", ep3.length === 2 && ep3[1].i0 === 18 && ep3[1].i1 === 19);
   near("north wind: the episode's rose points south", ep3[0].rose[8], 1, 1e-6);
+  const wPeak = Float32Array.from(w); wPeak[8] = 5;
+  yes("the episode's peak is its heaviest hour", episodes({ time: times, speed: spd, dir: dirs, soil: sm, sinceRain: sr }, wPeak)[0].peak === 8);
   yes("the episode keeps its weight, top speed, soil and hours since rain", ep3[0].weight === 4 && ep3[0].umax === 8 && Math.abs(ep3[0].soil - 0.1) < 1e-6 && ep3[0].sinceRain === 100 && ep3[0].start === times[0] && ep3[0].end === times[9]);
 
   // washed: a 24 h sum of 5 mm between the episode's end and the pass
