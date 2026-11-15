@@ -215,14 +215,14 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (s.refitReview) {
       const review = s.refitReview, before = review.baseline, after = review.candidate;
       kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_refit_comparison") }),
-        el("p", { class: "st-note", text: t(review.accepted ? "v_refit_accepted" : "v_refit_retained") }),
+        el("p", { class: "st-note", text: t(review.decision === "owner" ? "v_refit_owner" : review.accepted ? "v_refit_accepted" : "v_refit_retained") }),
         el("p", { class: "st-note", text: `${t("v_refit_period")}: ${review.period}` }),
         el("dl", { class: "st-rows" },
           row("AUC", `${f(before.auc, 3)} → ${f(after.auc, 3)}`),
           row(t("v_calibration_ratio"), `${f(before.predicted_observed_ratio, 2)} → ${f(after.predicted_observed_ratio, 2)}`),
           row("Brier", `${sig2(before.brier_exact)} → ${sig2(after.brier_exact)}`)),
         el("p", { class: "st-note", text: t("v_refit_caveat") }),
-        el("a", { href: "docs/REFIT_RESULTS_2026.md", target: "_blank", rel: "noopener", text: t("v_refit_report") })));
+        el("a", { href: "https://github.com/Sigma0sanaa/hazard/blob/main/docs/REFIT_2026.md", target: "_blank", rel: "noopener", text: t("v_refit_report") })));
     }
     return kids;
   }
