@@ -1,6 +1,6 @@
 /* Scores read back in words (js/meaning.js) against the formulas of pipeline/calibrate.py and pipeline/scores.py.
  * check() is plain JavaScript so it also runs in a browser where Node is not installed. */
-import { floodYears, lift, meaning, percent, times } from "../js/meaning.js";
+import { SCORE_MODEL, drift, floodYears, lift, meaning, percent, times } from "../js/meaning.js";
 
 export function check() {
   const out = [];
@@ -21,6 +21,10 @@ export function check() {
   yes("flood beyond twice the 25-year record is not put in years", meaning("flood", 95, 3, 7).beyond === true && meaning("flood", 80, 3, 7).beyond === false);
   yes("a score at 0 only bounds the chance from above", meaning("fire", 0, 10, 1).floor === true && meaning("fire", 12, 10, 1).floor === false && meaning("fire", 5, 10, 1).floorLo === true);
   yes("a score at 100 only bounds the chance from below", meaning("dust", 100, 5, 4).ceiling === true && meaning("dust", 97, 5, 4).ceilingHi === true);
+  // pipeline/model.json: 3284 fire cell-days in the unseen years 2018-2025, 18,467 cells inside Mongolia, 2,922 days
+  near("fire rate of the unseen years", SCORE_MODEL.fire.seen.rate, 3284 / (18467 * 2922), 1e-7);
+  near("the fitted base stands 2.9 times above it", drift("fire"), 2.93, 0.01);
+  yes("dust and flood state no drift", drift("dust") === null && drift("flood") === null);
   yes("all hazards has no single meaning", meaning("all", 50, 10, 5).kind === "all");
   yes("ratios read as people say them", times(2.14) === "2.1" && times(15.2) === "15" && times(1) === "1");
   return out;

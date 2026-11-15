@@ -2,7 +2,7 @@
  * Anything not computed is written as such, never left to look like a real number. */
 import { el, svg } from "./dom.js";
 import { fin } from "./stats.js";
-import { meaning, percent, times, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
+import { drift, meaning, percent, times, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
 
 const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 
@@ -195,6 +195,9 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (!v) { kids.push(el("p", { class: "st-note warn", text: t("v_none") })); return kids; }
     if (fin(v.far) && fin(v.pod)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain"), { k: Math.max(1, Math.round(1000 * (1 - v.far))), pod: Math.round(100 * v.pod), period: v.period ?? "" }) }));
     else if (fin(v.events_hit)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain_flood"), { hit: v.events_hit, n: v.n }) }));
+    // a known one-sided bias is said as such, not left inside a symmetric error
+    const dr = drift(s.hazard);
+    if (dr && dr > 1.5) kids.push(el("p", { class: "st-note warn", text: fill(t("v_drift"), { x: dr.toFixed(dr < 10 ? 1 : 0), period: SCORE_MODEL[s.hazard].seen.period }) }));
     kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_details") }), el("dl", { class: "st-rows" },
       row(t("v_reference"), v.reference ?? "—"), row(t("v_period"), `${v.period ?? "—"} · n=${v.n ?? "—"}`),
       row(t("v_auc"), v.auc_ci ? `${f(v.auc, 2)} [${f(v.auc_ci[0], 2)}, ${f(v.auc_ci[1], 2)}]` : f(v.auc, 2)),
