@@ -5,7 +5,8 @@
  *  - Weather: Open-Meteo hourly wind, gusts, precipitation, snow depth and topsoil moisture at nine points of the box for
  *    the day and the two after it (forecast within 85 days, ERA5 archive before), and CAMS dust near the ground.
  * Wind onset 6 m/s and the wet-day rule (0.254 mm/day stops emission, US EPA AP-42 13.2.2) are those of the national
- * dust score; 10 and 14 m/s are reported as strong and severe. The NDVI limits are common conventions, not fitted to
+ * dust score. "Conditions met" and "storm" start at the threshold winds published for Mongolia (windLimits below),
+ * between the grassland and the Gobi values by the bare share measured here; 10 and 14 m/s without a surface. The NDVI limits are common conventions, not fitted to
  * Mongolian dust events. Observed dust (TROPOMI) is not read here: its files are too large for a browser. */
 import { search, passes, bandOnGrid } from "./stac.js";
 import { CLOUDY_SCL, boxAreaKm2, makeGrid, rowAreaKm2 } from "./raster.js";
@@ -14,7 +15,23 @@ import { API, TZ } from "../config.js";
 export const DUST = {
   fineKm2: 2000, hardKm2: 20000, bareNdvi: 0.15, sparseNdvi: 0.30, lookbackDays: 30, maxPasses: 3, enoughClear: 0.95,
   onset: 6, strong: 10, severe: 14, wetDayMm: 0.254, snowM: 0.01, who: 45, archiveAfterDays: 85, hours: 72,
+  soilWet: 0.25, // m3/m3 in the top 7 cm: the wet-ground stop of the mine dust model (js/minedaily.js), now here too
 };
+/** Threshold 10 m wind for dust emission from station records of March 1998 to June 2005 (Kurosaki & Mikami 2007,
+ * J. Geophys. Res. 112, D17202, abstract): `favourable` is their u_t5% (surface close to its most favourable state),
+ * `normal` their u_t50%. Desert is the Gobi Desert (8.9 +/- 2.2 and 13.8 +/- 2.0 m/s), grass the grassland of northern
+ * Mongolia (9.8 +/- 2.2 and 16.2 +/- 2.5 m/s). */
+export const THRESHOLD_WIND = { favourable: { desert: 8.9, grass: 9.8 }, normal: { desert: 13.8, grass: 16.2 } };
+
+/** The wind from which conditions count as met (`strong`) and as a storm (`severe`), for ground whose bare share
+ * Sentinel-2 measured: between the grassland and the Gobi values in proportion to the bare share. Without a surface
+ * (no clear pass) the earlier fixed 10 and 14 m/s stay. The published values are 10-minute station winds; the winds
+ * here are hourly model means of nine points, which are smoother, so the limits lean to the cautious side. */
+export function windLimits(bareShare) {
+  if (typeof bareShare !== "number" || !(bareShare >= 0 && bareShare <= 1)) return { strong: DUST.strong, severe: DUST.severe, fromSurface: false }; // typeof: null >= 0 is true in JavaScript
+  const mix = (k) => Math.round(10 * (THRESHOLD_WIND[k].grass + bareShare * (THRESHOLD_WIND[k].desert - THRESHOLD_WIND[k].grass))) / 10;
+  return { strong: mix("favourable"), severe: mix("normal"), fromSurface: true };
+}
 /** Resolution 286 (2015), annex 2, item 1 "Хүчтэй салхи" (legalinfo.mn lawId=206858), in m/s: hazardous (аюултай) from
  * a mean of 18 or a gust of 24; a disaster (гамшигт) from a mean of 24 in forest steppe and mountains, 28 in steppe and
  * gobi, or a gust of 34. The resolution means station 10-minute winds; here they are Open-Meteo hourly model values. */
@@ -123,7 +140,7 @@ export async function weather(box, day, now = Date.now()) {
 const mean = (xs) => { const v = xs.filter(Number.isFinite); return v.length ? v.reduce((p, q) => p + q, 0) / v.length : null; };
 
 /** Hour by hour over the box: mean wind, highest gust, wet days, snow, soil water, and the CAMS peak. */
-export function windStats(wx) {
+export function windStats(wx, lim = windLimits(null)) {
   const H = wx.hours;
   if (!H.length || !H[0]?.time) return null;
   const times = H[0].time, n = Math.min(times.length, DUST.hours);
@@ -138,7 +155,8 @@ export function windStats(wx) {
     soil.push(mean(H.map((h) => h.soil_moisture_0_to_7cm?.[k])));
   }
   const wet = new Set([...rainByDay].filter(([, mm]) => mm >= DUST.wetDayMm).map(([d]) => d));
-  const dry = (k) => !wet.has(times[k].slice(0, 10)) && !((snow[k] ?? 0) >= DUST.snowM);
+  const soggy = (k) => (soil[k] ?? 0) >= DUST.soilWet; // wet topsoil holds the grains, as in the mine dust model
+  const dry = (k) => !wet.has(times[k].slice(0, 10)) && !((snow[k] ?? 0) >= DUST.snowM) && !soggy(k);
   const count = (lim) => wind.filter((v, k) => v !== null && v >= lim && dry(k)).length;
   const peak = wind.reduce((b, v, k) => (v !== null && (b === null || v > wind[b]) ? k : b), null);
   const top = point.reduce((b, v, k) => (Number.isFinite(v) && (b === null || v > point[b]) ? k : b), null);
@@ -150,7 +168,8 @@ export function windStats(wx) {
     }
   }
   return {
-    hours: n, from: times[0], to: times[n - 1], onset: count(DUST.onset), strong: count(DUST.strong), severe: count(DUST.severe),
+    hours: n, from: times[0], to: times[n - 1], onset: count(DUST.onset), strong: count(lim.strong), severe: count(lim.severe), limits: lim,
+    wetSoilHours: wind.filter((v, k) => v !== null && v >= DUST.onset && soggy(k)).length,
     maxWind: peak === null ? null : wind[peak], maxWindTime: peak === null ? null : times[peak], maxGust: Number.isFinite(Math.max(...gust)) ? Math.max(...gust) : null,
     pointWind: top === null ? null : point[top], pointWindTime: top === null ? null : times[top],
     wetDays: [...wet], rainMm: [...rainByDay.values()].reduce((a, b) => a + b, 0), snowM: snow[0], soil: mean(soil), cams,
@@ -166,7 +185,7 @@ export function verdict(sh, ws) {
   if (bare !== null && bare < 0.05) why.push("little_bare");
   if (snowShare > 0.5) why.push("snow_ground");
   if (ws.onset === 0) why.push("calm");
-  if (ws.wetDays.length && ws.onset === 0) why.push("wet");
+  if ((ws.wetDays.length || ws.wetSoilHours > 0) && ws.onset === 0) why.push("wet");
   const camsHigh = ws.cams && ws.cams.max >= DUST.who;
   if (why.length) return { key: camsHigh ? "not_local" : "no", why, camsHigh };
   const key = ws.severe > 0 ? "severe" : ws.strong > 0 ? "strong" : "possible";
@@ -195,6 +214,6 @@ export async function computeDust({ box, day, step = () => {}, now = Date.now() 
   const wx = await wxP;
   step("numbers");
   const sh = sf.land ? landShares(sf.grid, sf.land) : null;
-  const ws = wx.error ? null : windStats(wx);
+  const ws = wx.error ? null : windStats(wx, windLimits(sh?.share?.[LAND.bare] ?? null)); // limits follow the ground Sentinel-2 saw
   return { day, km2, grid: sf.grid, scale: sf.grid.scale, land: sf.land, dates: sf.dates, shares: sh, wind: ws, weatherSource: wx.source ?? null, weatherError: wx.error ?? null, verdict: verdict(sh, ws) };
 }

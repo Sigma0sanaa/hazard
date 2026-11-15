@@ -1,6 +1,6 @@
 /* Turns a set of grid cells and the stored grids into the numbers of the area window.
  * Used for a drawn box and for a soum alike, so both are computed the same way. */
-import { cellsMean, combineUncertainty, fin, samplingUncertainty, spatialLag1, trendReport } from "./stats.js";
+import { cellsLevel, cellsMean, combineUncertainty, fin, samplingUncertainty, spatialLag1, trendReport } from "./stats.js";
 import { gumbelFit, returnLevel } from "./flood_stats.js";
 import { decode, decodeCount } from "./dataset.js";
 
@@ -46,9 +46,13 @@ export function highDaySeries(cube, firstMonth, cells) {
   return [...by].map(([y, r]) => ({ y, v: r.n === 12 ? r.sum : null }));
 }
 
-/** Combined uncertainty of the area mean on one day (JCGM 100). */
-export function dayReport({ frame, uframe, cells, grid, classes, uModel }) {
-  const m = cellsMean(frame, cells, decode);
+/** Hazards whose score is a chance ratio in powers of 4 (js/meaning.js): their area level is the mean chance, not the mean score. */
+export const ratioScale = (hazard) => hazard === "fire" || hazard === "dust";
+
+/** Level of the area on one day with its combined uncertainty (JCGM 100). `ratio`: see cellsLevel in js/stats.js.
+ * `mean` is the level shown and classed; `meanScore` is the plain mean of the cell scores. */
+export function dayReport({ frame, uframe, cells, grid, classes, uModel, ratio = false }) {
+  const m = cellsLevel(frame, cells, decode, ratio);
   if (!m) return null;
   const rho = spatialLag1(frame, cells, decode, grid.nx);
   const uSampling = samplingUncertainty(m.sd, m.neff, rho);
@@ -63,7 +67,7 @@ export function dayReport({ frame, uframe, cells, grid, classes, uModel }) {
     total += w;
     share[classes.findIndex((c) => v < c.max)] += w;
   }
-  return { mean: m.mean, sd: m.sd, max, coverage: m.coverage, budget, share: share.map((s) => s / total), area: validAreaKm2(cells, frame, grid) };
+  return { mean: m.mean, meanScore: m.meanScore, sd: m.sd, max, coverage: m.coverage, budget, share: share.map((s) => s / total), area: validAreaKm2(cells, frame, grid) };
 }
 
 /** Long-term block: trend, high-risk days and return levels of the highest monthly mean of each year. */
@@ -78,6 +82,6 @@ export function longReport({ months, high }) {
   return {
     years, trend, high,
     highMean: mean(days), highWorst: worst,
-    rl: fit ? { t5: returnLevel(fit, 5), t20: returnLevel(fit, 20), n: fit.n } : null,
+    rl: fit ? { t5: Math.min(100, returnLevel(fit, 5)), t20: Math.min(100, returnLevel(fit, 20)), n: fit.n } : null, // the score ends at 100, the Gumbel curve does not
   };
 }

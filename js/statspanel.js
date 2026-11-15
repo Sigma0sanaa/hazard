@@ -2,13 +2,15 @@
  * Anything not computed is written as such, never left to look like a real number. */
 import { el, svg } from "./dom.js";
 import { fin } from "./stats.js";
-import { meaning, percent, times, SCORE_MODEL } from "./meaning.js";
+import { drift, meaning, percent, times, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
 
 const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : "—");
 const signed = (v, d = 2) => (fin(v) ? (v >= 0 ? "+" : "") + v.toFixed(d) : "—");
 const pv = (p) => (!fin(p) ? "—" : p < 0.001 ? "<0.001" : p.toFixed(p < 0.1 ? 3 : 2));
+/** Two significant digits without an exponent: a Brier score of 0.00006 must not print as 0.0001. */
+const sig2 = (v) => (!fin(v) ? "—" : v === 0 ? "0" : Number(v.toPrecision(2)).toFixed(Math.min(12, Math.max(0, 1 - Math.floor(Math.log10(Math.abs(v)))))));
 
 const niceTicks = (lo, hi, n = 4) => {
   const raw = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(raw || 1)), step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? raw;
@@ -99,15 +101,21 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     const m = meaning(s.hazard, d.mean, d.budget?.U, Number(s.date.slice(5, 7)));
     const name = (c) => classLabel(c.key), kids = [];
     kids.push(el("div", { class: "st-verdict" }, el("span", { class: "chip", style: `background:${cls.color};color:${cls.ink}`, text: name(cls) }), el("span", { text: t("verdict_" + (s.hazard ?? "all")) })));
-    const dir = (r) => (r >= 1 ? fill(t("times_more"), { r: times(r) }) : fill(t("times_less"), { r: times(1 / r) }));
-    if (m.kind === "lift" && s.hazard === "dust") kids.push(el("p", { class: "st-say", text: fill(t("say_dust"), { p: percent(m.p), base: percent(SCORE_MODEL.dust.base), dir: dir(m.ratio) }) }));
-    if (m.kind === "lift" && s.hazard === "fire") kids.push(el("p", { class: "st-say", text: fill(t("say_fire"), { dir: dir(m.ratio) }) }));
-    if (m.kind === "flood") kids.push(el("p", { class: "st-say", text: m.years >= 2 ? fill(t("say_flood"), { y: Math.round(m.years) }) : t("say_flood_usual") }));
+    // at the ends of the scale the chance is only bounded: "16 times less or lower", "256 times more or higher"
+    const dir = (r, end) => (r >= 1 ? fill(t(end ? "times_more_end" : "times_more"), { r: times(r) }) : fill(t(end ? "times_less_end" : "times_less"), { r: times(1 / r) }));
+    if (m.kind === "lift" && s.hazard === "dust") kids.push(el("p", { class: "st-say", text: fill(t("say_dust"), { p: `${m.floor ? "≤" : m.ceiling ? "≥" : "≈"}${percent(m.p)}`, base: percent(SCORE_MODEL.dust.base), dir: dir(m.ratio, m.floor || m.ceiling) }) }));
+    if (m.kind === "lift" && s.hazard === "fire") {
+      kids.push(el("p", { class: "st-say", text: fill(t("say_fire"), { dir: dir(m.ratio, m.floor || m.ceiling) }) }));
+      // a fire stays rare even in the high classes: said here in plain numbers, from the check on unseen years
+      const far = s.verification?.far;
+      if (fin(far)) kids.push(el("p", { class: "st-note", text: fill(t("say_fire_rare"), { k: Math.max(1, Math.round(1000 * (1 - far))) }) }));
+    }
+    if (m.kind === "flood") kids.push(el("p", { class: "st-say", text: m.years < 2 ? t("say_flood_usual") : m.beyond ? fill(t("say_flood_beyond"), { y: FLOOD_TRUST_YEARS }) : fill(t("say_flood"), { y: Math.round(m.years) }) }));
     if (m.kind === "all") kids.push(el("p", { class: "st-say", text: t("say_all") }));
     if (d.budget) {
       const range = m.kind === "lift" && s.hazard === "dust" ? fill(t("range_p"), { a: percent(m.pLo), b: percent(m.pHi) })
-        : m.kind === "lift" ? fill(t("range_r"), { a: dir(m.ratioLo), b: dir(m.ratioHi) })
-          : m.kind === "flood" && m.yearsHi >= 2 ? fill(t("range_y"), { a: Math.max(1, Math.round(m.yearsLo)), b: Math.round(m.yearsHi) }) : "";
+        : m.kind === "lift" ? fill(t("range_r"), { a: dir(m.ratioLo, m.floorLo), b: dir(m.ratioHi, m.ceilingHi) })
+          : m.kind === "flood" && m.yearsHi >= 2 ? fill(t("range_y"), { a: Math.max(1, Math.round(m.yearsLo)), b: m.yearsHi > FLOOD_TRUST_YEARS ? `${FLOOD_TRUST_YEARS}+` : Math.round(m.yearsHi) }) : "";
       const span = lo === hi ? fill(t("err_same"), { a: name(lo) }) : fill(t("err_span"), { a: name(lo), b: name(hi) });
       kids.push(el("p", { class: "st-say err" + (lo === hi ? "" : " wide"), text: `${span}${range ? " " + range : ""}` }));
     }
@@ -140,9 +148,9 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     const b = d?.budget;
     if (!b) { kids.push(el("p", { class: "st-note", text: t("u_none") })); return kids; }
     const p = (k) => (fin(b.parts[k]) ? `±${f(b.parts[k])}` : t("u_none"));
-    kids.push(el("dl", { class: "st-rows" },
-      row(t("u_expanded"), `±${atLeast(b)}${f(b.U)}`, "strong"), row(t("u_combined"), `±${atLeast(b)}${f(b.uc)}`),
-      row(t("u_input"), p("input")), row(t("u_model"), p("model")), row(t("u_sampling"), p("sampling"))));
+    kids.push(el("dl", { class: "st-rows" }, row(t("u_expanded"), `±${atLeast(b)}${f(b.U)}`, "strong")));
+    kids.push(el("details", { class: "st-help" }, el("summary", { text: t("u_parts") }), el("dl", { class: "st-rows" },
+      row(t("u_combined"), `±${atLeast(b)}${f(b.uc)}`), row(t("u_input"), p("input")), row(t("u_model"), p("model")), row(t("u_sampling"), p("sampling")))));
     if (b.missing.length) kids.push(el("p", { class: "st-note warn", text: t("u_note") }));
     return kids;
   }
@@ -157,12 +165,17 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (c) kids.push(c, el("div", { class: "keys" }, key("k-month", t("legend_month")), key("k-year", t("legend_year")), key("k-trend", t("legend_trend")), key("k-ci", t("legend_ci"))));
     if (!r) { kids.push(el("p", { class: "st-note", text: t("too_short") })); return kids; }
     const det = r.detectYear === null ? "—" : `${r.detectYear} (${r.detectEarly ?? "—"}–${r.detectLate ?? t("may_never")})`;
-    kids.push(el("dl", { class: "st-rows" },
+    // in words: a trend counts only when it stands after the year-to-year memory is taken into account (the stricter of the two tests)
+    const ps = [r.pAdjusted, r.pAr1].filter(fin), pWorst = ps.length ? Math.max(...ps) : null;
+    kids.push(el("p", { class: "st-say", text: fill(t(pWorst === null ? "trend_unknown" : pWorst >= 0.05 ? "trend_none" : r.slope > 0 ? "trend_up" : "trend_down"), { y: r.first }) }));
+    // IMERG before 2014 rests on other satellites (methods window), so a flood trend may come from the data, and has to say so
+    if (s.hazard === "flood" && pWorst !== null && pWorst < 0.05) kids.push(el("p", { class: "st-note warn", text: t("trend_flood_note") }));
+    kids.push(el("details", { class: "st-help" }, el("summary", { text: t("trend_details") }), el("dl", { class: "st-rows" },
       row(t("ci95"), r.ciDecade ? `[${f(r.ciDecade[0], 2)}, ${f(r.ciDecade[1], 2)}]` : "—"),
       row(t("p_chain"), `${pv(r.pPlain)} → ${pv(r.pAdjusted)} → ${pv(r.pAr1)}`),
       row(t("phi_row"), `${f(r.phi, 2)} · ±${f(r.detectableDecade, 2)} · ${r.nStar === null ? "—" : Math.ceil(r.nStar)}`),
       row(t("detect_year"), det),
-      row(t("mk_row"), `${pv(r.mk?.p)} · ${signed(r.senDecade)}`)));
+      row(t("mk_row"), `${pv(r.mk?.p)} · ${signed(r.senDecade)}`))));
     if (s.long.years.some((y) => !fin(y.v))) kids.push(el("p", { class: "st-note", text: t("partial") }));
     return kids;
   }
@@ -180,13 +193,18 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     const kids = [el("div", { class: "st-kicker", text: t("k_verify") })], v = s.verification;
     if (s.hazard === "all") { kids.push(el("p", { class: "st-note", text: t("v_all") })); return kids; }
     if (!v) { kids.push(el("p", { class: "st-note warn", text: t("v_none") })); return kids; }
-    kids.push(el("dl", { class: "st-rows" },
+    if (fin(v.far) && fin(v.pod)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain"), { k: Math.max(1, Math.round(1000 * (1 - v.far))), pod: Math.round(100 * v.pod), period: v.period ?? "" }) }));
+    else if (fin(v.events_hit)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain_flood"), { hit: v.events_hit, n: v.n }) }));
+    // a known one-sided bias is said as such, not left inside a symmetric error
+    const dr = drift(s.hazard);
+    if (dr && dr > 1.5) kids.push(el("p", { class: "st-note warn", text: fill(t("v_drift"), { x: dr.toFixed(dr < 10 ? 1 : 0), period: SCORE_MODEL[s.hazard].seen.period }) }));
+    kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_details") }), el("dl", { class: "st-rows" },
       row(t("v_reference"), v.reference ?? "—"), row(t("v_period"), `${v.period ?? "—"} · n=${v.n ?? "—"}`),
       row(t("v_auc"), v.auc_ci ? `${f(v.auc, 2)} [${f(v.auc_ci[0], 2)}, ${f(v.auc_ci[1], 2)}]` : f(v.auc, 2)),
       fin(v.pod) ? row(t("v_pod_far"), `${f(v.pod, 2)} · ${f(v.far, 3)}`) : null,
       fin(v.share_flagged) ? row(t("v_flagged"), `${f(v.share_flagged * 100, 1)}%`) : null,
       fin(v.events_hit) ? row(t("v_events"), `${v.events_hit} / ${v.n}`) : null,
-      fin(v.csi) ? row(t("v_csi_brier"), `${f(v.csi, 3)} · ${f(v.brier, 4)}`) : null));
+      fin(v.csi) ? row(t("v_csi_brier"), `${f(v.csi, 3)} · ${sig2(v.brier)}`) : null)));
     return kids;
   }
 

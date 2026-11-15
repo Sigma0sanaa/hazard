@@ -51,13 +51,15 @@ const COMMON_ERROR = {
     "Талбайн дундаж нь өргөргийн косинусаар жигнэгдэнэ, учир нь хойд зүгт нүдний талбай багасдаг.",
     "Өдрийн алдаа нь GUM (JCGM 100)-ийн дагуу гурван хэсгийн квадрат нийлбэр: оролтын өгөгдөл, загвар, орон зайн түүвэр. Өргөтгөсөн алдаа U = 2·u꜀ (≈95%).",
     "Чиг хандлагын p утгыг гурван аргаар харуулна: энгийн OLS, автокорреляцаар засварласан түүвэр, AR(1) регресс. Эхнийх нь хамгийн өөдрөг байдаг тул сүүлийн хоёрыг гол гэж үзнэ.",
-    "Илрэх жил нь Weatherhead нарын n* томьёогоор, 90% магадлалтайгаар тооцогдоно.",
+    "Илрэх жил нь Weatherhead нарын (1998) n* томьёогоор, 90% магадлалтайгаар тооцогдоно. Томьёо сарын утгад зориулагдсан тул жилийн дундаж утгад √12 үржүүлэгчтэй хэрэглэсэн (2026-11-15-наас; өмнө нь илрэх өөрчлөлт 3.5 дахин бага гарч байсан).",
+    "Түймэр, тоосны талбайн (сумын) оноо нь нүднүүдийн магадлалын дундажид харгалзах оноо. Онооны энгийн дундаж нь магадлалын геометр дундаж болж, эрсдэлийг дутуу харуулдаг байсан (2026-11-15-нд зассан).",
   ],
   en: [
     "Area means are weighted by the cosine of latitude, because cells shrink towards the north.",
     "The daily error follows the GUM (JCGM 100): input data, model and spatial sampling added in quadrature. Expanded uncertainty U = 2·u꜀ (about 95 %).",
     "The trend p value is shown three ways: plain OLS, an autocorrelation-adjusted sample, and AR(1) regression. The first is the most optimistic, so read the last two.",
-    "Detection years use the n* formula of Weatherhead et al. at 90 % probability.",
+    "Detection years use the n* formula of Weatherhead et al. (1998) at 90 % probability. It is written for monthly values, so yearly means carry a factor √12 (since 2026-11-15; before, the detectable change came out 3.5 times too small).",
+    "For wildfire and dust the score of an area (or soum) is the score of the average chance of its cells. The plain mean of the scores is the geometric mean of the chances and under-stated the risk (corrected 2026-11-15).",
   ],
 };
 
@@ -68,7 +70,7 @@ export const METHODS = {
       lead: "Олон улсын FWI, Монголд туршсан олон шалгуурт үнэлгээ хоёрыг нэгтгэж, хиймэл дагуулын бодит түймрээр тохируулсан оноо.",
       method: [
         "Өдөр бүрийн цаг агаарын галын аюул: Канадын FWI системийг (Van Wagner 1987) ERA5-Land-ын 13:00 цагийн (УБ) температур, чийгшил, салхи, 24 цагийн хур тунадсаар бүхэл торон дээр бодно. Цас ≥ 1 см нүдэнд кодууд эхний утгадаа буцна. Numpy код нь cffdrs-ийн лавлах утгатай таарсан.",
-        "Суурь эмзэг байдал: Nasanbat нарын (2016, 2018) олон шалгуурт үнэлгээ, Malczewski-ийн rank-sum жин. Түлэгдсэн талбайн давтамж (MCD64A1), галын цэгийн нягт (FIRMS), газрын бүрхэвч (MCD12Q1), SPI. Галын аюулын албан ёсны зураг, галын харуулын байрлал нээлттэй биш тул хасаж, үлдсэн жинг дахин нормчилсон.",
+        "Суурь эмзэг байдал: Nasanbat нарын (2016, 2018) олон шалгуурт үнэлгээ, Malczewski-ийн rank-sum жин. Түлэгдсэн талбайн давтамж (MCD64A1), галын цэгийн нягт (FIRMS), газрын бүрхэвч (MCD12Q1), хуурайшилт (ERA5-Land-ын сарын борооны стандартчилсан хазайлт; эх өгүүлэлд SPI). Галын аюулын албан ёсны зураг, галын харуулын байрлал нээлттэй биш тул хасаж, үлдсэн жинг дахин нормчилсон.",
         "Тохируулга: хиймэл дагуулын идэвхтэй галд (MODIS FIRMS, 0.1° нүд, өдөр) логистик регрессээр FWI, эмзэг байдал, өмнөх сарын NDVI-г тааруулна. 2001–2017 оноор сургаад, үзээгүй 2018–2025 оноор шалгасан; ашиглалтын коэффициентыг дараа нь бүх оноор дахин тооцсон.",
         "Оноо нь улсын дунджаас хэд дахин их магадлалтайг 4-ийн зэргээр хэмжинэ: 1/4-өөс бага бол «Маш бага», 1/4–1 «Бага», 1–4 «Дунд», 4–16 «Өндөр», 16-аас их бол «Маш өндөр».",
         "Тухайн өдөр хиймэл дагуул гал илрүүлсэн нүд өдрийн зурагт дор хаяж 90 оноо авна. Олон жилийн статистикт энэ ажиглалт ордоггүй.",
@@ -79,6 +81,7 @@ export const METHODS = {
         "Гал нь ховор үзэгдэл тул нэг нүд, нэг өдрийн түвшинд «өндөр» гэсэн 1000 тохиолдлын 1 орчимд л гал гардаг. Оноо нь гал гарна гэсэн таамаг биш, эрсдэл хаана төвлөрснийг харуулна.",
         "Галын цэгийн нягт, түлэгдсэн талбайн давтамж ижил хиймэл дагуулаас гардаг тул онуудыг тусгаарласан шалгалт хийсэн ч орон зайн хэв маяг өмнөх түймрийн давталт дээр суурилна.",
         "Шалгуурын 5 ангийн хязгаар (квартил), газрын бүрхэвчийн зэрэглэл нь бидний сонголт, эх өгүүллийн утга биш.",
+        "Хуурайшлыг жинхэнэ SPI-ээр (гамма тархалт тааруулсан) биш, сарын борооны энгийн стандартчилсан хазайлтаар авсан. Хуурай саруудад энэ нь хүчтэй ганг (−1.5-аас доош) бараг гаргадаггүй тул гангийн нөлөө дутуу тооцогдоно. Жин нь 2/21.",
         "2018 оны өгүүллийн хүснэгтэд SPI-ийн жин 0.01 гэж хэвлэгдсэн боловч өгүүллийн томьёогоор 2/21 ≈ 0.10 гарна. Энд томьёоны утгыг ашиглав.",
         "Nasanbat нарын (2016) загварын нийт нарийвчлал 62% байсан. Тэр тоо, энд гарсан AUC хоёр өөр хэмжүүр тул шууд харьцуулахгүй.",
         "Монгол дахь түймрийн 95 орчим хувь хүний үйл ажиллагаанаас шалтгаалдаг гэж Erdenetuya (2012)-ийг иш татан бичсэн байдаг. Загвар гал асах үйл явдлыг мэдэхгүй.",
@@ -91,7 +94,7 @@ export const METHODS = {
       lead: "The international FWI combined with a multi-criteria method tested in Mongolia, calibrated to fires actually seen by satellite.",
       method: [
         "Daily fire weather: the Canadian FWI System (Van Wagner 1987) on the whole grid, from ERA5-Land temperature, humidity and wind at 13:00 Ulaanbaatar time and 24-hour precipitation. Where snow is at least 1 cm the codes return to their start values. The numpy code matches the cffdrs reference values.",
-        "Baseline susceptibility: the multi-criteria method of Nasanbat et al. (2016, 2018) with Malczewski rank-sum weights: burnt-area frequency (MCD64A1), hotspot density (FIRMS), land cover (MCD12Q1), SPI. The official fire danger map and fire guard positions are not open, so those criteria are dropped and the other weights renormalised.",
+        "Baseline susceptibility: the multi-criteria method of Nasanbat et al. (2016, 2018) with Malczewski rank-sum weights: burnt-area frequency (MCD64A1), hotspot density (FIRMS), land cover (MCD12Q1), dryness (standardised anomaly of monthly ERA5-Land rain; SPI in the papers). The official fire danger map and fire guard positions are not open, so those criteria are dropped and the other weights renormalised.",
         "Calibration: logistic regression of FWI, susceptibility and the NDVI of the previous month on satellite active fire (MODIS FIRMS, 0.1 degree cell, day). Trained on 2001–2017 and tested on the unseen years 2018–2025; production coefficients were then refitted on all years.",
         "The score measures how many times likelier a fire is than the national average, in powers of 4: below 1/4 very low, 1/4–1 low, 1–4 moderate, 4–16 high, above 16 very high.",
         "A cell where a satellite detected fire that day gets at least 90 on the daily map. Long-term statistics leave this observation out.",
@@ -102,6 +105,7 @@ export const METHODS = {
         "Fire is rare: at the level of one cell and one day, only about 1 in 1000 'high' cases has a fire. The score shows where risk concentrates; it does not predict a fire.",
         "Hotspot density and burnt-area frequency come from the same satellites. The test years are held out, but the spatial pattern still rests on fires repeating where they burned before.",
         "The class limits of the criteria (quartiles) and the land cover ranks are our choice, not values from the papers.",
+        "Dryness is a plain standardised anomaly of monthly rain, not a gamma-fitted SPI. In dry months it almost never reaches severe drought (below −1.5), so drought counts for less than it should. Its weight is 2/21.",
         "The 2018 paper prints the SPI weight as 0.01, but its own formula gives 2/21 ≈ 0.10. The formula value is used.",
         "The overall accuracy of Nasanbat and Lkhamjav (2016) was 62 %. That and the AUC here are different measures and cannot be compared directly.",
         "About 95 % of fires in Mongolia are reported to be human-caused (Erdenetuya 2012, as cited there). The model knows nothing about ignition.",
@@ -114,7 +118,7 @@ export const METHODS = {
       ["MODIS MCD64A1", "500 м", { mn: "Түлэгдсэн талбайн давтамж", en: "Burnt-area frequency" }],
       ["MODIS/VIIRS FIRMS", "375 м – 1 км", { mn: "Галын цэгийн нягт, шалгалтын лавлагаа", en: "Hotspot density, verification reference" }],
       ["MODIS MCD12Q1", "500 м", { mn: "Газрын бүрхэвч", en: "Land cover" }],
-      ["CHIRPS", "≈5 км", { mn: "SPI хуурайшилт", en: "SPI dryness" }],
+      ["ERA5-Land (ECMWF)", "≈9 км", { mn: "Сарын бороо: хуурайшлын стандартчилсан хазайлт", en: "Monthly rain: standardised dryness anomaly" }],
     ],
   },
   dust: {
@@ -134,7 +138,7 @@ export const METHODS = {
         "Wu нарын босго салхины тэгшитгэлийг шууд хэрэглээгүй: өгүүллийн тэгшитгэлүүдийг уншиж чадаагүй тул STI-г зөвхөн тайлбарлагч хувьсагчаар авсан.",
         "Индексийн хазайлт ≥ 1 босго нь бидний сонголт.",
         "Wu нарын аргын ашиг 3-р сард сул (R² 0.54, 0.75-ын эсрэг): хөлдүү хөрс, цасыг нэмж тооцох шаардлагатай.",
-        "Kurosaki, Mikami (2007)-ийн тоон утгуудыг зөвхөн хураангуйгаас уншсан.",
+        "Kurosaki, Mikami (2007)-ийн хураангуйгаар тоос босох босго салхи Говьд 8.9 ± 2.2 м/с (нөхцөл хамгийн таатай үед), 13.8 ± 2.0 м/с (ердийн нөхцөлд), Монголын хойд хэсгийн хээрт 9.8 ± 2.2 ба 16.2 ± 2.5 м/с. Сайтын 6 м/с нь эдгээрээс доогуур, загваруудын түгээмэл хэрэглэдэг (6–6.5 м/с) доод босго; улсын загварт энэ нь зөвхөн регрессийн хугарлын цэг. Тоон утгуудыг зөвхөн хураангуйгаас уншсан.",
         "Ажиглалт 2018-оос эхэлдэг тул 2001–2017 оны оноо нь шалгагдаагүй онуудын загварчлал юм.",
       ],
       refs: ["wu23", "kurosaki07", "kurosaki05"],
@@ -155,7 +159,7 @@ export const METHODS = {
         "The threshold wind equations of Wu et al. are not applied directly: they could not be read from the paper, so STI enters only as a predictor.",
         "The anomaly threshold of 1 is our choice.",
         "The gain of the method of Wu et al. is weak in March (R² 0.54 against 0.75): frozen soil and snow also have to be handled.",
-        "The figures of Kurosaki and Mikami (2007) were read from an abstract only.",
+        "By the abstract of Kurosaki and Mikami (2007) the threshold wind for dust is 8.9 ± 2.2 m/s in the Gobi under the most favourable surface and 13.8 ± 2.0 m/s under normal conditions, 9.8 ± 2.2 and 16.2 ± 2.5 m/s on the grassland of northern Mongolia. The 6 m/s used here lies below these; it is the low constant onset common in dust models (6–6.5 m/s), and in the national model only the hinge of a regression. The figures were read from the abstract only.",
         "Observations start in 2018, so scores for 2001–2017 are model output for years that could not be checked.",
       ],
       refs: ["wu23", "kurosaki07", "kurosaki05"],
@@ -174,7 +178,7 @@ export const METHODS = {
       method: [
         "Усны орц: GPM IMERG V07-ийн хиймэл дагуулын хур тунадас ба ERA5-Land-ын цас хайлалтын 3 хоногийн нийлбэр. Цас хайлалтыг оруулсан нь чухал: Global Flood Database-ын Монголын 12 үерийн 6 нь цас хайлалттай холбоотой.",
         "Давтагдах хугацаа: нүд бүрт 2001–2025 оны жилийн хамгийн их утгаас Gumbel тархалтыг L-моментоор (Hosking 1990) тооцно. GloFAS-ын сэрэмжлүүлгийн түвшний адилаар 2, 5, 20, 100 жил нь 40, 60, 80, 100 оноо.",
-        "Хүчин зүйлс: 5 мм-ээс бага ус оноо өгөхгүй, 20 мм-ээс дээш бүрэн тооцогдоно, ингэснээр говийн 3 мм «дээд амжилт» үер болохгүй. Нүдний усны шугамаас 5 м-ийн дотор байгаа хувь (MERIT Hydro) оноог жигнэнэ.",
+        "Хүчин зүйлс: 5 мм-ээс бага ус оноо өгөхгүй, 20 мм-ээс дээш бүрэн тооцогдоно, ингэснээр говийн 3 мм «дээд амжилт» үер болохгүй. Нүдний талбайгаас хамгийн ойрын гол, жалгын түвшнээс дээш 5 м хүртэлх өндөрт орших хэсгийн хувь (MERIT Hydro, HAND) оноог жигнэнэ.",
         "Үерийн тохиолдол цөөн тул загвар тохируулаагүй, зөвхөн бүртгэгдсэн үертэй тулгаж шалгасан.",
       ],
       limits: [
@@ -194,7 +198,7 @@ export const METHODS = {
       method: [
         "Water input: three-day sum of GPM IMERG V07 satellite rainfall and ERA5-Land snowmelt. Snowmelt matters: 6 of the 12 Mongolian floods in the Global Flood Database involve it.",
         "Return period: per cell, a Gumbel distribution fitted by L-moments (Hosking 1990) to the annual maxima of 2001–2025. As with GloFAS alert levels, 2, 5, 20 and 100 years give 40, 60, 80 and 100 points.",
-        "Modifiers: below 5 mm of water there is no score and from 20 mm it counts in full, so a 3 mm record in the Gobi is no flood. The share of the cell within 5 m of drainage (MERIT Hydro) weights the score.",
+        "Modifiers: below 5 mm of water there is no score and from 20 mm it counts in full, so a 3 mm record in the Gobi is no flood. The share of the cell lying no more than 5 m above the nearest drainage line (MERIT Hydro, height above nearest drainage) weights the score.",
         "Floods on record are too few to fit a model, so the score is only checked against them.",
       ],
       limits: [

@@ -13,8 +13,8 @@ import { initDownloads } from "./downloads.js";
 import { createRiskLayer } from "./riskmap.js";
 import { initRectDraw } from "./rectdraw.js";
 import { addDays, initDateBar } from "./datebar.js";
-import { boxCells, cellsMean } from "./stats.js";
-import { dayReport, highDaySeries, longReport, monthSeries } from "./area.js";
+import { boxCells, cellsLevel } from "./stats.js";
+import { dayReport, highDaySeries, longReport, monthSeries, ratioScale } from "./area.js";
 import { createStatsPanel } from "./statspanel.js";
 import { openMethods } from "./methods.js";
 import { createSoumLayer, loadSoums } from "./soums.js";
@@ -543,7 +543,7 @@ function soumLabel(f) {
 
 function soumScore(f) {
   const fr = frameNow();
-  return fr ? cellsMean(fr, f.cells, decode)?.mean ?? null : null;
+  return fr ? cellsLevel(fr, f.cells, decode, ratioScale(state.hazard))?.mean ?? null : null; // as the area window (js/area.js)
 }
 
 function paintSoums() {
@@ -601,7 +601,7 @@ function renderSelection() {
   const s = state.sel;
   if (!s || isDzud()) return;
   const m = state.manifest, fr = frameNow();
-  const day = fr ? dayReport({ frame: fr, uframe: uFrameNow(), cells: s.cells, grid: m.grid, classes: CLASSES, uModel: m.uncertainty?.[state.hazard]?.u_model }) : null;
+  const day = fr ? dayReport({ frame: fr, uframe: uFrameNow(), cells: s.cells, grid: m.grid, classes: CLASSES, uModel: m.uncertainty?.[state.hazard]?.u_model, ratio: ratioScale(state.hazard) }) : null;
   state.panel.render({
     kind: s.kind, label: s.label, hazard: state.hazard, hazardLabel: t(state.hazard), date: state.date,
     day, dayMissing: !fr, long: s.long, months: s.months, longError: s.longError || !m, verification: m?.verification?.[state.hazard],
