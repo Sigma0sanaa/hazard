@@ -28,7 +28,7 @@ export const THRESHOLD_WIND = { favourable: { desert: 8.9, grass: 9.8 }, normal:
  * (no clear pass) the earlier fixed 10 and 14 m/s stay. The published values are 10-minute station winds; the winds
  * here are hourly model means of nine points, which are smoother, so the limits lean to the cautious side. */
 export function windLimits(bareShare) {
-  if (!(bareShare >= 0 && bareShare <= 1)) return { strong: DUST.strong, severe: DUST.severe, fromSurface: false };
+  if (typeof bareShare !== "number" || !(bareShare >= 0 && bareShare <= 1)) return { strong: DUST.strong, severe: DUST.severe, fromSurface: false }; // typeof: null >= 0 is true in JavaScript
   const mix = (k) => Math.round(10 * (THRESHOLD_WIND[k].grass + bareShare * (THRESHOLD_WIND[k].desert - THRESHOLD_WIND[k].grass))) / 10;
   return { strong: mix("favourable"), severe: mix("normal"), fromSurface: true };
 }
