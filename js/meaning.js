@@ -1,4 +1,5 @@
-/* What a score means in words. Fire and dust scores are powers of 4 of the lift of a fitted probability over its
+/* What a score means in words. For an area the score passed in is the score of the mean chance ratio of its cells
+ * (cellsLevel in js/stats.js), so the words speak of the average chance of a cell of the area. Fire and dust scores are powers of 4 of the lift of a fitted probability over its
  * national average (pipeline/calibrate.py: score = 20 * (log4(p / base) + 2)), so a score can be read back as "how
  * many times the usual chance". The flood score maps the return period of three days of rain and snowmelt
  * (1, 2, 5, 20, 100 years to 0, 40, 60, 80, 100; pipeline/scores.py), lowered away from drainage lines. */
@@ -10,6 +11,14 @@ export const SCORE_MODEL = {
 };
 
 const clamp = (s) => Math.min(100, Math.max(0, s));
+/** The scale ends at 0 and 100 (stored in steps of 0.4), so a score at an end only bounds the chance: at 0 it is 1/16 of the
+ * average or less (snow-covered ground is set to 0), at 100 it is 256 times or more. */
+export const atFloor = (score) => score <= 0.2;
+export const atCeiling = (score) => score >= 99.8;
+/** The return levels are fitted to the annual maxima of 2001-2025. A return period far beyond the record is an
+ * extrapolation, so the words stop at twice its length. */
+export const FLOOD_RECORD_YEARS = 25;
+export const FLOOD_TRUST_YEARS = 2 * FLOOD_RECORD_YEARS;
 /** How many times the usual chance a score stands for. */
 export const lift = (score) => 4 ** (clamp(score) / 20 - 2);
 
@@ -30,9 +39,10 @@ export function meaning(hazard, score, U, month) {
   const m = SCORE_MODEL[hazard];
   if (m) {
     return { kind: "lift", ratio: lift(score), ratioLo: lift(lo), ratioHi: lift(hi), p: m.base * lift(score), pLo: m.base * lift(lo), pHi: Math.min(1, m.base * lift(hi)),
+      floor: atFloor(score), ceiling: atCeiling(score), floorLo: atFloor(lo), ceilingHi: atCeiling(hi),
       offSeason: Boolean(m.months && month && !m.months.includes(month)) };
   }
-  if (hazard === "flood") return { kind: "flood", years: floodYears(score), yearsLo: floodYears(lo), yearsHi: floodYears(hi), offSeason: false };
+  if (hazard === "flood") return { kind: "flood", years: floodYears(score), yearsLo: floodYears(lo), yearsHi: floodYears(hi), beyond: floodYears(score) > FLOOD_TRUST_YEARS, offSeason: false };
   return { kind: "all", offSeason: false };
 }
 

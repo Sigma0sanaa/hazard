@@ -7,7 +7,7 @@
 import { CLASSES, GIBS } from "./config.js";
 import { decode } from "./dataset.js";
 import { boxCells } from "./stats.js";
-import { dayReport } from "./area.js";
+import { dayReport, ratioScale } from "./area.js";
 import { el } from "./dom.js";
 import { periodStart, versionAt } from "./gibs.js";
 import { addDays } from "./datebar.js";
@@ -47,7 +47,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
     if (!m || !fr) return { view, plume, s: null };
     const cells = s?.cells?.length ? s.cells : boxCells(m.grid, view);
     const uModel = m.uncertainty?.[state.hazard]?.u_model ?? null;
-    const day = dayReport({ frame: fr, uframe: uFrameNow(), cells, grid: m.grid, classes: CLASSES, uModel });
+    const day = dayReport({ frame: fr, uframe: uFrameNow(), cells, grid: m.grid, classes: CLASSES, uModel, ratio: ratioScale(state.hazard) });
     return day ? { m, fr, s, cells, uModel, day, view, plume } : { view, plume, s: null };
   }
 
@@ -189,7 +189,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
     if (!soums) throw new Error(t("soum_none"));
     const inside = c.s ? new Set(c.s.cells.map((x) => x.i)) : null;
     return soums.features.filter((f) => !inside || f.cells.some((x) => inside.has(x.i))).map((f) => {
-      const d = dayReport({ frame: c.fr, uframe: uFrameNow(), cells: f.cells, grid: c.m.grid, classes: CLASSES, uModel: c.uModel });
+      const d = dayReport({ frame: c.fr, uframe: uFrameNow(), cells: f.cells, grid: c.m.grid, classes: CLASSES, uModel: c.uModel, ratio: ratioScale(state.hazard) });
       return { geometry: f.geometry, color: d ? classOf(d.mean).color : "#555555", values: { soum_mn: f.names.mn, aimag_mn: f.aimags.mn, soum_en: f.names.en, aimag_en: f.aimags.en, hazard: state.hazard, obs_date: state.date, score: d ? round(d.mean) : null, risk_cls: d ? classLabel(classOf(d.mean).key) : "", U95: d ? round(d.budget.U) : null, err_pct: d ? relative(d.budget.U, d.mean) : null, U95_lb: d?.budget.missing.length ? "Y" : "N" } };
     });
   }
