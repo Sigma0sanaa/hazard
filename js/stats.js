@@ -2,8 +2,10 @@
  *
  * Trend:       ordinary least squares; lag-1 adjusted effective sample size (Santer et al. 2000);
  *              Cochrane-Orcutt AR(1) regression; Mann-Kendall test and Theil-Sen slope.
- * Detection:   Weatherhead et al. (1998, 2000), n* = [ (2+z_b)/|w0| * sN * sqrt((1+phi)/(1-phi)) ]^(2/3).
- *              Equation (2) of Weatherhead et al. (2000); 2+z_b = 3.3 gives 90 % detection probability.
+ * Detection:   Weatherhead et al. (1998), eq. 2 and 3: n* = [ (2+z_b)/|w0| * sN * sqrt((1+phi)/(1-phi)) ]^(2/3),
+ *              2+z_b = 3.3 gives 90 % detection probability. The paper writes it for MONTHLY values (sN and phi of the
+ *              monthly noise, n in years). For m values a year the trend's standard deviation is
+ *              sN * sqrt(12/m) * sqrt((1+phi)/(1-phi)) / n^(3/2), so yearly values (m = 1) need the factor sqrt(12).
  * Uncertainty: JCGM 100 (GUM) combination in quadrature with expanded uncertainty U = k * u_c, k = 2.
  *
  * Missing values are kept as null/NaN and skipped. Nothing here invents a value: too little data gives null. */
@@ -181,17 +183,21 @@ export function senSlope(x, y) {
 
 /* -------------------------------------------------------------- detection */
 const memory = (phi) => Math.sqrt((1 + phi) / (1 - phi));
+/** Weatherhead et al. (1998) wrote their formula for 12 values a year. With m values a year the sum of squares of the
+ * time axis is m n^3 / 12, so the noise term carries sqrt(12 / m): 1 for monthly values, sqrt(12) for yearly ones. */
+const spacing = (perYear) => Math.sqrt(12 / perYear);
 
-/** Years needed to detect trend `omega` (per year). `power` = 2 + z_b; 3.3 = 90 % detection probability. */
-export function yearsToDetect(omega, sigmaN, phi, power = 3.3) {
+/** Years needed to detect trend `omega` (per year). `power` = 2 + z_b; 3.3 = 90 % detection probability.
+ * `sigmaN` and `phi` belong to the series as sampled, `perYear` values a year (12 = the published monthly form). */
+export function yearsToDetect(omega, sigmaN, phi, power = 3.3, perYear = 12) {
   if (!fin(omega) || omega === 0 || !fin(sigmaN) || !fin(phi) || Math.abs(phi) >= 1) return null;
-  return (power / Math.abs(omega) * sigmaN * memory(Math.max(phi, 0))) ** (2 / 3);
+  return (power / Math.abs(omega) * sigmaN * spacing(perYear) * memory(Math.max(phi, 0))) ** (2 / 3);
 }
 
-/** Smallest trend (per year) a record of n years can detect: sigma_w = sN / n^(3/2) * memory. */
-export function minDetectable(n, sigmaN, phi, power = 3.3) {
+/** Smallest trend (per year) a record of n years can detect: power x sigma_w, sigma_w = sN sqrt(12/m) / n^(3/2) x memory. */
+export function minDetectable(n, sigmaN, phi, power = 3.3, perYear = 12) {
   if (!(n > 0) || !fin(sigmaN) || !fin(phi) || Math.abs(phi) >= 1) return null;
-  return power * sigmaN * memory(Math.max(phi, 0)) / n ** 1.5;
+  return power * sigmaN * spacing(perYear) * memory(Math.max(phi, 0)) / n ** 1.5;
 }
 
 /**
@@ -206,15 +212,16 @@ export function trendReport(years, values) {
   const phi = Math.max(adj.r1, 0);
   const sigmaN = Math.sqrt(fit.sse / (fit.n - 2));
   const first = Math.min(...years.filter((y, i) => fin(values[i])));
-  const nStar = yearsToDetect(fit.slope, sigmaN, phi);
+  const YEARLY = 1; // one value a year: without it the detectable trend came out sqrt(12) = 3.5 times too small
+  const nStar = yearsToDetect(fit.slope, sigmaN, phi, 3.3, YEARLY);
   const toYear = (n) => (n === null ? null : first + Math.ceil(n) - 1);
   let early = null, late = null;
   if (adj.ci) {
     const [lo, hi] = adj.ci, crosses = lo <= 0 && hi >= 0;
-    early = toYear(yearsToDetect(Math.max(Math.abs(lo), Math.abs(hi)), sigmaN, phi));
-    late = crosses ? null : toYear(yearsToDetect(Math.min(Math.abs(lo), Math.abs(hi)), sigmaN, phi));
+    early = toYear(yearsToDetect(Math.max(Math.abs(lo), Math.abs(hi)), sigmaN, phi, 3.3, YEARLY));
+    late = crosses ? null : toYear(yearsToDetect(Math.min(Math.abs(lo), Math.abs(hi)), sigmaN, phi, 3.3, YEARLY));
   }
-  const min = minDetectable(fit.n, sigmaN, phi);
+  const min = minDetectable(fit.n, sigmaN, phi, 3.3, YEARLY);
   return {
     n: fit.n, first, mean: fit.ym, slope: fit.slope, intercept: fit.intercept, slopeDecade: fit.slope * 10,
     ciDecade: adj.ci ? [adj.ci[0] * 10, adj.ci[1] * 10] : null,
@@ -271,6 +278,24 @@ export function cellsMean(frame, cells, decode) {
   let ss = 0;
   for (const { i, w } of cells) { const v = decode(frame[i]); if (v !== null) ss += w * (v - mean) ** 2; }
   return { mean, sd: Math.sqrt(ss / sw), neff: sw * sw / sw2, coverage: total > 0 ? sw / total : 0 };
+}
+
+/** Fire and dust scores are logarithms of a chance ratio: score = 20 (log4(ratio) + 2), pipeline/calibrate.py. */
+export const scoreToRatio = (s) => 4 ** (s / 20 - 2);
+export const ratioToScore = (r) => Math.min(100, Math.max(0, 20 * (Math.log(r) / Math.log(4) + 2)));
+
+/**
+ * The level of an area. On a linear scale it is the weighted mean score. On the ratio scale of fire and dust (`ratio`
+ * true) it is the score of the mean chance ratio: the mean of the scores would be the geometric mean of the chances,
+ * which is always below their average and reads an area with a few very high cells as calm (Jensen's inequality).
+ * The spread, effective size and coverage are those of cellsMean, for the error budget.
+ */
+export function cellsLevel(frame, cells, decode, ratio = false) {
+  const m = cellsMean(frame, cells, decode);
+  if (!m || !ratio) return m && { ...m, meanScore: m.mean };
+  let sw = 0, sr = 0;
+  for (const { i, w } of cells) { const v = decode(frame[i]); if (v !== null) { sw += w; sr += w * scoreToRatio(v); } }
+  return { ...m, meanScore: m.mean, mean: ratioToScore(sr / sw) };
 }
 
 /** Lag-1 spatial autocorrelation between east-west neighbours among the given cells. */

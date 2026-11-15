@@ -18,6 +18,9 @@ export function check() {
   near("flood 40 points is once in 2 years", floodYears(40), 2, 1e-9);
   near("flood 80 points is once in 20 years", floodYears(80), 20, 1e-9);
   near("flood 70 points lies between 5 and 20 years", floodYears(70), 10, 1e-9);
+  yes("flood beyond twice the 25-year record is not put in years", meaning("flood", 95, 3, 7).beyond === true && meaning("flood", 80, 3, 7).beyond === false);
+  yes("a score at 0 only bounds the chance from above", meaning("fire", 0, 10, 1).floor === true && meaning("fire", 12, 10, 1).floor === false && meaning("fire", 5, 10, 1).floorLo === true);
+  yes("a score at 100 only bounds the chance from below", meaning("dust", 100, 5, 4).ceiling === true && meaning("dust", 97, 5, 4).ceilingHi === true);
   yes("all hazards has no single meaning", meaning("all", 50, 10, 5).kind === "all");
   yes("ratios read as people say them", times(2.14) === "2.1" && times(15.2) === "15" && times(1) === "1");
   return out;

@@ -34,7 +34,18 @@ export function check(ref) {
 
   const rep = S.trendReport(ref.years, ref.y);
   near("sigma N", rep.sigmaN, ref.sigmaN);
-  near("years to detect", rep.nStar, ref.nstar, 1e-7);
+  // ref.nstar is the published monthly form. The report works on one value a year, where the time axis has 12 times
+  // less leverage: the noise term carries sqrt(12), so n* is 12^(1/3) times longer (Weatherhead et al. 1998, eq. 2, 3).
+  near("years to detect, monthly form", S.yearsToDetect(rep.slope, rep.sigmaN, rep.phi), ref.nstar, 1e-7);
+  near("years to detect, yearly values", rep.nStar, ref.nstar * 12 ** (1 / 3), 1e-6);
+  // The smallest detectable trend of yearly values is 3.3 standard errors of the OLS slope (no autocorrelation):
+  // se = sigma sqrt(12 / (n (n^2 - 1))), which sqrt(12) sigma / n^1.5 approaches. Before the fix it was below one se.
+  {
+    const n = 25, sigma = 2, se = sigma * Math.sqrt(12 / (n * (n * n - 1)));
+    near("detectable trend of yearly values is 3.3 se", S.minDetectable(n, sigma, 0, 3.3, 1) / (3.3 * se), 1, 0.002);
+    near("monthly values keep the published form", S.minDetectable(n, sigma, 0), 3.3 * sigma / n ** 1.5, 1e-12);
+    yes("the detectable trend is not smaller than the 95 % interval half-width", rep.detectableDecade > (rep.ciDecade[1] - rep.ciDecade[0]) / 2);
+  }
   for (const [t, df, p] of ref.t_p_checks) near(`t p(${t}, ${df})`, S.tPValue(t, df), p);
   for (const [df, q] of ref.tcrit_checks) near(`t crit(${df})`, S.tCrit(0.05, df), q, 1e-7);
   for (const [z, p] of ref.norm_checks) near(`normal p(${z})`, S.normPValue(z), p);
@@ -66,6 +77,19 @@ export function check(ref) {
   near("mean skips missing", m.mean, 20);
   near("coverage", m.coverage, 2 / 3);
   yes("all missing gives null", S.cellsMean(Uint8Array.from([255]), [{ i: 0, w: 1 }], dec) === null);
+
+  // Area level on the ratio scale (fire, dust): 20 points are 4 times the chance, so one cell at 80 (16 times) and
+  // three at 40 (1 time) average (16 + 3) / 4 = 4.75 times = 62.5 points, not the mean score of 50 (2 times).
+  const four = [0, 1, 2, 3].map((i) => ({ i, w: 1 })), frame = Uint8Array.from([80, 40, 40, 40]);
+  near("ratio of a score", S.scoreToRatio(60), 4, 1e-12);
+  near("score of a ratio", S.ratioToScore(16), 80, 1e-9);
+  near("linear scale keeps the mean score", S.cellsLevel(frame, four, dec).mean, 50);
+  const lvl = S.cellsLevel(frame, four, dec, true);
+  near("ratio scale takes the mean chance", lvl.mean, 20 * (Math.log(4.75) / Math.log(4) + 2), 1e-9);
+  near("the plain mean is kept beside it", lvl.meanScore, 50);
+  yes("the mean chance is never below the mean score", lvl.mean >= lvl.meanScore);
+  near("equal cells give the same level on both scales", S.cellsLevel(Uint8Array.from([55, 55]), four.slice(0, 2), dec, true).mean, 55, 1e-9);
+  yes("ratio scale: all missing gives null", S.cellsLevel(Uint8Array.from([255]), [{ i: 0, w: 1 }], dec, true) === null);
 
   // Too little data never yields a number.
   yes("short series gives null", S.trendReport([2001, 2002, 2003], [1, 2, 3]) === null);

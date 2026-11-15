@@ -47,13 +47,15 @@ const COMMON_ERROR = {
     "Талбайн дундаж нь өргөргийн косинусаар жигнэгдэнэ, учир нь хойд зүгт нүдний талбай багасдаг.",
     "Өдрийн алдаа нь GUM (JCGM 100)-ийн дагуу гурван хэсгийн квадрат нийлбэр: оролтын өгөгдөл, загвар, орон зайн түүвэр. Өргөтгөсөн алдаа U = 2·u꜀ (≈95%).",
     "Чиг хандлагын p утгыг гурван аргаар харуулна: энгийн OLS, автокорреляцаар засварласан түүвэр, AR(1) регресс. Эхнийх нь хамгийн өөдрөг байдаг тул сүүлийн хоёрыг гол гэж үзнэ.",
-    "Илрэх жил нь Weatherhead нарын n* томьёогоор, 90% магадлалтайгаар тооцогдоно.",
+    "Илрэх жил нь Weatherhead нарын (1998) n* томьёогоор, 90% магадлалтайгаар тооцогдоно. Томьёо сарын утгад зориулагдсан тул жилийн дундаж утгад √12 үржүүлэгчтэй хэрэглэсэн (2026-11-15-наас; өмнө нь илрэх өөрчлөлт 3.5 дахин бага гарч байсан).",
+    "Түймэр, тоосны талбайн (сумын) оноо нь нүднүүдийн магадлалын дундажид харгалзах оноо. Онооны энгийн дундаж нь магадлалын геометр дундаж болж, эрсдэлийг дутуу харуулдаг байсан (2026-11-15-нд зассан).",
   ],
   en: [
     "Area means are weighted by the cosine of latitude, because cells shrink towards the north.",
     "The daily error follows the GUM (JCGM 100): input data, model and spatial sampling added in quadrature. Expanded uncertainty U = 2·u꜀ (about 95 %).",
     "The trend p value is shown three ways: plain OLS, an autocorrelation-adjusted sample, and AR(1) regression. The first is the most optimistic, so read the last two.",
-    "Detection years use the n* formula of Weatherhead et al. at 90 % probability.",
+    "Detection years use the n* formula of Weatherhead et al. (1998) at 90 % probability. It is written for monthly values, so yearly means carry a factor √12 (since 2026-11-15; before, the detectable change came out 3.5 times too small).",
+    "For wildfire and dust the score of an area (or soum) is the score of the average chance of its cells. The plain mean of the scores is the geometric mean of the chances and under-stated the risk (corrected 2026-11-15).",
   ],
 };
 
@@ -170,7 +172,7 @@ export const METHODS = {
       method: [
         "Усны орц: GPM IMERG V07-ийн хиймэл дагуулын хур тунадас ба ERA5-Land-ын цас хайлалтын 3 хоногийн нийлбэр. Цас хайлалтыг оруулсан нь чухал: Global Flood Database-ын Монголын 12 үерийн 6 нь цас хайлалттай холбоотой.",
         "Давтагдах хугацаа: нүд бүрт 2001–2025 оны жилийн хамгийн их утгаас Gumbel тархалтыг L-моментоор (Hosking 1990) тооцно. GloFAS-ын сэрэмжлүүлгийн түвшний адилаар 2, 5, 20, 100 жил нь 40, 60, 80, 100 оноо.",
-        "Хүчин зүйлс: 5 мм-ээс бага ус оноо өгөхгүй, 20 мм-ээс дээш бүрэн тооцогдоно, ингэснээр говийн 3 мм «дээд амжилт» үер болохгүй. Нүдний усны шугамаас 5 м-ийн дотор байгаа хувь (MERIT Hydro) оноог жигнэнэ.",
+        "Хүчин зүйлс: 5 мм-ээс бага ус оноо өгөхгүй, 20 мм-ээс дээш бүрэн тооцогдоно, ингэснээр говийн 3 мм «дээд амжилт» үер болохгүй. Нүдний талбайгаас хамгийн ойрын гол, жалгын түвшнээс дээш 5 м хүртэлх өндөрт орших хэсгийн хувь (MERIT Hydro, HAND) оноог жигнэнэ.",
         "Үерийн тохиолдол цөөн тул загвар тохируулаагүй, зөвхөн бүртгэгдсэн үертэй тулгаж шалгасан.",
       ],
       limits: [
@@ -190,7 +192,7 @@ export const METHODS = {
       method: [
         "Water input: three-day sum of GPM IMERG V07 satellite rainfall and ERA5-Land snowmelt. Snowmelt matters: 6 of the 12 Mongolian floods in the Global Flood Database involve it.",
         "Return period: per cell, a Gumbel distribution fitted by L-moments (Hosking 1990) to the annual maxima of 2001–2025. As with GloFAS alert levels, 2, 5, 20 and 100 years give 40, 60, 80 and 100 points.",
-        "Modifiers: below 5 mm of water there is no score and from 20 mm it counts in full, so a 3 mm record in the Gobi is no flood. The share of the cell within 5 m of drainage (MERIT Hydro) weights the score.",
+        "Modifiers: below 5 mm of water there is no score and from 20 mm it counts in full, so a 3 mm record in the Gobi is no flood. The share of the cell lying no more than 5 m above the nearest drainage line (MERIT Hydro, height above nearest drainage) weights the score.",
         "Floods on record are too few to fit a model, so the score is only checked against them.",
       ],
       limits: [
