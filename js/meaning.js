@@ -6,9 +6,16 @@
 
 /** Average daily chance of the event per 0.1° cell in the data the model was fitted to (pipeline/model.json "base"). */
 export const SCORE_MODEL = {
-  fire: { base: 0.0001784, event: "fire" },          // MODIS active fire in the cell that day, all months
+  // MODIS active fire in the cell that day, all months. `seen` is what the years the model had not seen held:
+  // 3284 fire cell-days / (18,467 cells x 2,922 days of 2018-2025), pipeline/model.json. Fires were 2.9 times rarer
+  // than the 2001-2025 base, so a ratio to "the average" is a ratio to the usual day of recent years, and reads
+  // about 3 times high against the 2001-2025 average. Refit with a time term to remove it (docs/HANDOFF.md, 3.1).
+  fire: { base: 0.0001784, event: "fire", seen: { period: "2018–2025", rate: 0.0000609 } },
   dust: { base: 0.02235, event: "dust", months: [3, 4, 5] }, // TROPOMI aerosol index anomaly >= 1, fitted on March-May
 };
+
+/** How many times the fitted base rate stands above what the unseen years held, or null where that is not known. */
+export const drift = (hazard) => { const m = SCORE_MODEL[hazard]; return m?.seen ? m.base / m.seen.rate : null; };
 
 const clamp = (s) => Math.min(100, Math.max(0, s));
 /** The scale ends at 0 and 100 (stored in steps of 0.4), so a score at an end only bounds the chance: at 0 it is 1/16 of the

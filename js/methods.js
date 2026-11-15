@@ -66,7 +66,7 @@ export const METHODS = {
       lead: "Олон улсын FWI, Монголд туршсан олон шалгуурт үнэлгээ хоёрыг нэгтгэж, хиймэл дагуулын бодит түймрээр тохируулсан оноо.",
       method: [
         "Өдөр бүрийн цаг агаарын галын аюул: Канадын FWI системийг (Van Wagner 1987) ERA5-Land-ын 13:00 цагийн (УБ) температур, чийгшил, салхи, 24 цагийн хур тунадсаар бүхэл торон дээр бодно. Цас ≥ 1 см нүдэнд кодууд эхний утгадаа буцна. Numpy код нь cffdrs-ийн лавлах утгатай таарсан.",
-        "Суурь эмзэг байдал: Nasanbat нарын (2016, 2018) олон шалгуурт үнэлгээ, Malczewski-ийн rank-sum жин. Түлэгдсэн талбайн давтамж (MCD64A1), галын цэгийн нягт (FIRMS), газрын бүрхэвч (MCD12Q1), SPI. Галын аюулын албан ёсны зураг, галын харуулын байрлал нээлттэй биш тул хасаж, үлдсэн жинг дахин нормчилсон.",
+        "Суурь эмзэг байдал: Nasanbat нарын (2016, 2018) олон шалгуурт үнэлгээ, Malczewski-ийн rank-sum жин. Түлэгдсэн талбайн давтамж (MCD64A1), галын цэгийн нягт (FIRMS), газрын бүрхэвч (MCD12Q1), хуурайшилт (ERA5-Land-ын сарын борооны стандартчилсан хазайлт; эх өгүүлэлд SPI). Галын аюулын албан ёсны зураг, галын харуулын байрлал нээлттэй биш тул хасаж, үлдсэн жинг дахин нормчилсон.",
         "Тохируулга: хиймэл дагуулын идэвхтэй галд (MODIS FIRMS, 0.1° нүд, өдөр) логистик регрессээр FWI, эмзэг байдал, өмнөх сарын NDVI-г тааруулна. 2001–2017 оноор сургаад, үзээгүй 2018–2025 оноор шалгасан; ашиглалтын коэффициентыг дараа нь бүх оноор дахин тооцсон.",
         "Оноо нь улсын дунджаас хэд дахин их магадлалтайг 4-ийн зэргээр хэмжинэ: 1/4-өөс бага бол «Маш бага», 1/4–1 «Бага», 1–4 «Дунд», 4–16 «Өндөр», 16-аас их бол «Маш өндөр».",
         "Тухайн өдөр хиймэл дагуул гал илрүүлсэн нүд өдрийн зурагт дор хаяж 90 оноо авна. Олон жилийн статистикт энэ ажиглалт ордоггүй.",
@@ -77,6 +77,7 @@ export const METHODS = {
         "Гал нь ховор үзэгдэл тул нэг нүд, нэг өдрийн түвшинд «өндөр» гэсэн 1000 тохиолдлын 1 орчимд л гал гардаг. Оноо нь гал гарна гэсэн таамаг биш, эрсдэл хаана төвлөрснийг харуулна.",
         "Галын цэгийн нягт, түлэгдсэн талбайн давтамж ижил хиймэл дагуулаас гардаг тул онуудыг тусгаарласан шалгалт хийсэн ч орон зайн хэв маяг өмнөх түймрийн давталт дээр суурилна.",
         "Шалгуурын 5 ангийн хязгаар (квартил), газрын бүрхэвчийн зэрэглэл нь бидний сонголт, эх өгүүллийн утга биш.",
+        "Хуурайшлыг жинхэнэ SPI-ээр (гамма тархалт тааруулсан) биш, сарын борооны энгийн стандартчилсан хазайлтаар авсан. Хуурай саруудад энэ нь хүчтэй ганг (−1.5-аас доош) бараг гаргадаггүй тул гангийн нөлөө дутуу тооцогдоно. Жин нь 2/21.",
         "2018 оны өгүүллийн хүснэгтэд SPI-ийн жин 0.01 гэж хэвлэгдсэн боловч өгүүллийн томьёогоор 2/21 ≈ 0.10 гарна. Энд томьёоны утгыг ашиглав.",
         "Nasanbat нарын (2016) загварын нийт нарийвчлал 62% байсан. Тэр тоо, энд гарсан AUC хоёр өөр хэмжүүр тул шууд харьцуулахгүй.",
         "Монгол дахь түймрийн 95 орчим хувь хүний үйл ажиллагаанаас шалтгаалдаг гэж Erdenetuya (2012)-ийг иш татан бичсэн байдаг. Загвар гал асах үйл явдлыг мэдэхгүй.",
@@ -89,7 +90,7 @@ export const METHODS = {
       lead: "The international FWI combined with a multi-criteria method tested in Mongolia, calibrated to fires actually seen by satellite.",
       method: [
         "Daily fire weather: the Canadian FWI System (Van Wagner 1987) on the whole grid, from ERA5-Land temperature, humidity and wind at 13:00 Ulaanbaatar time and 24-hour precipitation. Where snow is at least 1 cm the codes return to their start values. The numpy code matches the cffdrs reference values.",
-        "Baseline susceptibility: the multi-criteria method of Nasanbat et al. (2016, 2018) with Malczewski rank-sum weights: burnt-area frequency (MCD64A1), hotspot density (FIRMS), land cover (MCD12Q1), SPI. The official fire danger map and fire guard positions are not open, so those criteria are dropped and the other weights renormalised.",
+        "Baseline susceptibility: the multi-criteria method of Nasanbat et al. (2016, 2018) with Malczewski rank-sum weights: burnt-area frequency (MCD64A1), hotspot density (FIRMS), land cover (MCD12Q1), dryness (standardised anomaly of monthly ERA5-Land rain; SPI in the papers). The official fire danger map and fire guard positions are not open, so those criteria are dropped and the other weights renormalised.",
         "Calibration: logistic regression of FWI, susceptibility and the NDVI of the previous month on satellite active fire (MODIS FIRMS, 0.1 degree cell, day). Trained on 2001–2017 and tested on the unseen years 2018–2025; production coefficients were then refitted on all years.",
         "The score measures how many times likelier a fire is than the national average, in powers of 4: below 1/4 very low, 1/4–1 low, 1–4 moderate, 4–16 high, above 16 very high.",
         "A cell where a satellite detected fire that day gets at least 90 on the daily map. Long-term statistics leave this observation out.",
@@ -100,6 +101,7 @@ export const METHODS = {
         "Fire is rare: at the level of one cell and one day, only about 1 in 1000 'high' cases has a fire. The score shows where risk concentrates; it does not predict a fire.",
         "Hotspot density and burnt-area frequency come from the same satellites. The test years are held out, but the spatial pattern still rests on fires repeating where they burned before.",
         "The class limits of the criteria (quartiles) and the land cover ranks are our choice, not values from the papers.",
+        "Dryness is a plain standardised anomaly of monthly rain, not a gamma-fitted SPI. In dry months it almost never reaches severe drought (below −1.5), so drought counts for less than it should. Its weight is 2/21.",
         "The 2018 paper prints the SPI weight as 0.01, but its own formula gives 2/21 ≈ 0.10. The formula value is used.",
         "The overall accuracy of Nasanbat and Lkhamjav (2016) was 62 %. That and the AUC here are different measures and cannot be compared directly.",
         "About 95 % of fires in Mongolia are reported to be human-caused (Erdenetuya 2012, as cited there). The model knows nothing about ignition.",
@@ -112,7 +114,7 @@ export const METHODS = {
       ["MODIS MCD64A1", "500 м", { mn: "Түлэгдсэн талбайн давтамж", en: "Burnt-area frequency" }],
       ["MODIS/VIIRS FIRMS", "375 м – 1 км", { mn: "Галын цэгийн нягт, шалгалтын лавлагаа", en: "Hotspot density, verification reference" }],
       ["MODIS MCD12Q1", "500 м", { mn: "Газрын бүрхэвч", en: "Land cover" }],
-      ["CHIRPS", "≈5 км", { mn: "SPI хуурайшилт", en: "SPI dryness" }],
+      ["ERA5-Land (ECMWF)", "≈9 км", { mn: "Сарын бороо: хуурайшлын стандартчилсан хазайлт", en: "Monthly rain: standardised dryness anomaly" }],
     ],
   },
   dust: {
