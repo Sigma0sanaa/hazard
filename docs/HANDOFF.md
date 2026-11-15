@@ -82,12 +82,12 @@ python build.py                     # data/gee-г бүх оноор дахин �
 | № | Сайт дээрх утга | Хаана | Тулгах эх сурвалж | Төлөв |
 |---|---|---|---|---|
 | 1 | n* томьёо, сарын утгад | `js/stats.js` | Weatherhead нар 1998, JGR 103(D14) | ✔ тулгасан, засаж PR #9-д орсон |
-| 2 | dNBR анги: −0.10, 0.10, 0.27, 0.44, 0.66 | `js/aoi/fire.js`, `gee_app/fire_aoi.js` | Key & Benson 2006 (USDA RMRS-GTR-164-CD); UN-SPIDER burn severity; USGS | 4-р хэсгийг үз |
-| 3 | Sentinel-1 үер: VH, 50 м, харьцаа 1.25 (хуудсанд 1.20), JRC ≥ 10 сар, налуу > 5°, < 8 пиксел | `js/aoi/flood.js`, `gee_app/flood_aoi.js` | UN-SPIDER Recommended Practice (flood mapping, Sentinel-1, GEE) | 4-р хэсгийг үз |
-| 4 | EFFIS FWI анги: 5.2, 11.2, 21.3, 38, 50 | `pipeline/fwi_np.py` (`effis_score`), `js/config.js` | EFFIS / JRC хуудас | 4-р хэсгийг үз |
-| 5 | Тоос босох салхи 6 м/с | `pipeline/calibrate.py` (`dust_design`), `js/aoi/dust.js` | Kurosaki & Mikami 2007, JGR 112, D17202; Монголын станцын судалгаа | 4-р хэсгийг үз |
-| 6 | Нойтон өдөр ≥ 0.254 мм | `js/aoi/dust.js`, `js/minedaily.js` | US EPA AP-42 13.2.2 | 4-р хэсгийг үз |
-| 7 | PM10 24 цагийн удирдамж 45 мкг/м³ | `js/aoi/dust.js` | WHO Global Air Quality Guidelines 2021; Монголын MNS 4585:2016 | 4-р хэсгийг үз |
+| 2 | dNBR анги: −0.10, 0.10, 0.27, 0.44, 0.66 | `js/aoi/fire.js`, `gee_app/fire_aoi.js` | Key & Benson 2006 (USDA RMRS-GTR-164-CD); UN-SPIDER burn severity; USGS | ✔ таарсан (EFFIS, UN-SPIDER/IWG-SEM). Сэргэн ургалтын −0.25, −0.10-ыг анхдагч эхээс (Key & Benson 2006) уншаагүй |
+| 3 | Sentinel-1 үер: VH, 50 м, харьцаа 1.25 (хуудсанд 1.20), JRC ≥ 10 сар, налуу > 5°, < 8 пиксел | `js/aoi/flood.js`, `gee_app/flood_aoi.js` | UN-SPIDER Recommended Practice (flood mapping, Sentinel-1, GEE) | ✔ 1.25 таарсан (UN-SPIDER). VH, 10 сар, 5°, 8 пикселийг UN-SPIDER-ийн скриптээс өөрөөс нь уншиж баталгаажуулах үлдсэн |
+| 4 | EFFIS FWI анги: 5.2, 11.2, 21.3, 38, 50 | `pipeline/fwi_np.py` (`effis_score`), `js/config.js` | EFFIS / JRC хуудас | ✔ таарсан. EFFIS 2021-06-аас > 70 «very extreme» нэмсэн; сайтад нөлөөгүй |
+| 5 | Тоос босох салхи 6 м/с | `pipeline/calibrate.py` (`dust_design`), `js/aoi/dust.js` | Kurosaki & Mikami 2007, JGR 112, D17202; Монголын станцын судалгаа | ✔ шалгасан: 6 м/с нь Монголын нийтлэгдсэн босгоос (Говь 8.9, хээр 9.8 м/с) доогуур. Текстэд тусгасан. Өгүүллийг бүтнээр нь уншаагүй (зөвхөн хураангуй) |
+| 6 | Нойтон өдөр ≥ 0.254 мм | `js/aoi/dust.js`, `js/minedaily.js` | US EPA AP-42 13.2.2 | хийгээгүй |
+| 7 | PM10 24 цагийн удирдамж 45 мкг/м³ | `js/aoi/dust.js` | WHO Global Air Quality Guidelines 2021; Монголын MNS 4585:2016 | ✔ ДЭМБ-ын утга таарсан (45; завсрын 150, 100, 75, 50), гэхдээ ДЭМБ-ын баримтаас өөрөөс нь биш. MNS 4585:2016-г шалгаагүй |
 | 8 | TROPOMI аэрозолийн индексийн хазайлт ≥ 1 | `pipeline/calibrate.py` (`AAI_EVENT`) | ESA/KNMI Sentinel-5P AER_AI баримт | хийгээгүй |
 | 9 | Зуд: «том малын 5%-иас дээш хорогдол» | `js/dzud_data.js` (ZudRisk-ийн өөрийн тохируулга) | Sarul72/ZudRisk репо; ҮСХ 1212.mn; IBLI (Дэлхийн банк) 6% босго; ЦУОШГ-ын зудын эрсдэлийн зураг | хийгээгүй |
 | 10 | Gumbel-ийг 25 жилээр тааруулж 100 жилийн давтамж хэлэх | `pipeline/scores.py`, `js/meaning.js` | WMO-No. 168; Hosking & Wallis 1997 | хийгээгүй. Одоо 50 жилээс цааш тоо хэлэхгүй болгосон нь шалгагчийн сонголт |
@@ -103,6 +103,10 @@ python build.py                     # data/gee-г бүх оноор дахин �
 - Талбайн цонхны «Талбайн хэмжээ» нь өгөгдөлтэй хэсгийн талбай (хилийн гадна талыг хассан), зүүн самбарын «Сонгосон талбай» нь зурсан хайрцгийн бүтэн талбай: нэрийг «Өгөгдөлтэй талбай» болгож ялга.
 
 ## 4. Энэ салбарт нэмэлтээр хийгдсэн зүйлс
+
+- **Түймрийн суурь давтамж (3.1-ийн түр шийдэл):** `js/meaning.js` → `SCORE_MODEL.fire.seen`, `drift()`. Цонх «улсын ердийн өдрийнхөөс X дахин» гэж хэлж, «Загварын нарийвчлал» хэсэгт 2018–2025 онд гал 2.9 дахин цөөн байсныг нэг чиглэлтэй зөрүү гэж бичнэ (`v_drift`).
+- **SPI (3.2-ын түр шийдэл):** арга зүйн цонхонд «сарын борооны стандартчилсан хазайлт» гэж нэрлэж, хязгаарлалтад бичсэн; өгөгдлийн хүснэгтийн CHIRPS-ийг ERA5-Land болгосон (CHIRPS хаана ч ашиглагдаагүй).
+- **Босгын тулгалт (3.3):** үр дүн `docs/METHODS.md` → «Sources checked (2026-11-15)». Тоосны хамгийн доод дүгнэлтийн текстэд (`da_v_possible`) 6 м/с нь хамгийн доод босго гэдгийг нэмсэн.
 
 Энэ хэсгийг ажил урагшлах бүрд шинэчилнэ. Хамгийн сүүлийн төлөвийг `git log --oneline origin/fix/audit-2026-11-15` болон `docs/METHODS.md`-ийн «Audit corrections», «Sources checked» хэсгээс хар.
 
