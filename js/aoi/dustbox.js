@@ -35,7 +35,7 @@ export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewe
     if (sh) out.push(fill(t("da_r_ground"), { d: r.dates.join(", "), seen: pct(sh.seenShare), bare: pct(sh.share[LAND.bare]), sparse: pct(sh.share[LAND.sparse]), veg: pct(sh.share[LAND.veg]), snow: pct(sh.share[LAND.snow]) }));
     else out.push(t("da_r_noground"));
     if (w) {
-      out.push(fill(t("da_r_wind"), { a: hm(w.from), b: hm(w.to), n: w.onset, s: w.strong, x: w.severe, m: f1(w.maxWind), at: hm(w.maxWindTime), g: f1(w.maxGust) }));
+      out.push(fill(t("da_r_wind"), { a: hm(w.from), b: hm(w.to), n: w.onset, s: w.strong, x: w.severe, ls: w.limits?.strong ?? 10, lx: w.limits?.severe ?? 14, m: f1(w.maxWind), at: hm(w.maxWindTime), g: f1(w.maxGust) }));
       out.push(fill(t("da_r_wet"), { mm: f1(w.rainMm), days: w.wetDays.length ? w.wetDays.join(", ") : t("da_none"), snow: Math.round((w.snowM ?? 0) * 100), soil: w.soil === null ? "—" : w.soil.toFixed(2) }));
       out.push(w.cams ? fill(t("da_r_cams"), { v: Math.round(w.cams.max), at: hm(w.cams.time), who: DUST.who }) : t("da_r_nocams"));
       out.push(fill(t("da_r_src"), { s: t(r.weatherSource === "era5" ? "da_src_era5" : "da_src_fc") }));

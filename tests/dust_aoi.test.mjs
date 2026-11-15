@@ -1,6 +1,6 @@
 /* The dust check of a chosen area (js/aoi/dust.js): ground classes, weather counts and the plain conclusion, each on
  * a case worked out by hand. check() is plain JavaScript so it also runs in a browser where Node is not installed. */
-import { DUST, LAND, landClass, landShares, points, scaleFor, verdict, windStats } from "../js/aoi/dust.js";
+import { DUST, LAND, THRESHOLD_WIND, landClass, landShares, points, scaleFor, verdict, windLimits, windStats } from "../js/aoi/dust.js";
 import { makeGrid } from "../js/aoi/raster.js";
 
 /** Hourly data for `n` hours at every point: functions of the hour index. */
@@ -57,6 +57,23 @@ export function check() {
   const v5 = verdict({ share: [0, 0.9, 0, 0, 0, 0, 0] }, w5);
   yes("dust in the model but calm here is said apart", v5.key === "not_local" && v5.camsHigh === true && 300 >= DUST.who);
   yes("no weather means no conclusion", verdict(null, null).key === "unknown");
+
+  // Wind limits follow the ground: Gobi values on bare ground, grassland values on vegetation (Kurosaki & Mikami 2007).
+  const gobi = windLimits(1), steppe = windLimits(0), half = windLimits(0.5);
+  yes("bare ground takes the Gobi thresholds", gobi.strong === THRESHOLD_WIND.favourable.desert && gobi.severe === THRESHOLD_WIND.normal.desert);
+  yes("vegetated ground takes the grassland thresholds", steppe.strong === 9.8 && steppe.severe === 16.2);
+  yes("mixed ground lies between them", half.strong === 9.4 && half.severe === 15);
+  yes("without a surface the fixed 10 and 14 m/s stay", windLimits(null).strong === 10 && windLimits(null).severe === 14 && windLimits(null).fromSurface === false);
+  // The documented test days over the Gobi box (docs/METHODS.md, 95-98 % bare): the three storms had winds of 11.8 to
+  // 13.3 m/s and stay "conditions met", not "storm"; the calm summer day at 8.0 m/s stays at the lowest level.
+  const bareBox = { share: [0, 0.96, 0.02, 0.02, 0, 0, 0] }, limG = windLimits(0.96);
+  for (const top of [13.3, 11.8, 12.4]) yes(`storm day at ${top} m/s: conditions met`, verdict(bareBox, windStats(wx({ wind: (h) => (h >= 8 && h < 16 ? top : 4) }), limG)).key === "strong");
+  yes("calm summer day at 8.0 m/s: lowest level only", verdict(bareBox, windStats(wx({ wind: (h) => (h < 18 ? 8.0 : 4) }), limG)).key === "possible");
+  yes("the same 9.5 m/s is met on bare ground and not on grass", verdict(bareBox, windStats(wx({ wind: () => 9.5 }), limG)).key === "strong"
+    && verdict({ share: [0, 0.1, 0.2, 0.7, 0, 0, 0] }, windStats(wx({ wind: () => 9.5 }), windLimits(0.1))).key === "possible");
+  // Wet topsoil stops emission as rain and snow do.
+  const wSoil = windStats(wx({ wind: () => 12, soil: () => 0.3 }));
+  yes("wet topsoil stops dust", wSoil.onset === 0 && wSoil.wetSoilHours > 0 && verdict(bareBox, wSoil).why.includes("wet"));
   return out;
 }
 
