@@ -34,6 +34,8 @@ jobs:
           node-version: 22
       - name: Unit tests
         run: node --test
+      - name: Check model and map history
+        run: node scripts/check-model-data.mjs
       - name: Build live data (Open-Meteo, optional NASA FIRMS)
         env:
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}

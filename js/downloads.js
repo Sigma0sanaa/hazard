@@ -61,6 +61,9 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
       U95_points: round(b.U), U95_is_lower_bound: b.missing.length ? "yes" : "no", confidence: "95 percent, k=2 (JCGM 100)", error_pct_of_scale: Math.round(b.U), error_pct_of_mean: relative(b.U, d.mean),
       u_input: round(b.parts.input), u_model: round(b.parts.model), u_sampling: round(b.parts.sampling),
       verification_auc: round(v?.auc, 2), verification_period: v?.period ?? null, data_version: c.m.generated_at, grid_deg: c.m.grid.dx,
+      model_id: c.m.model_id ?? null, model_method: c.m.score_models?.[state.hazard]?.method?.version ?? "legacy",
+      model_base_rate: c.m.score_models?.[state.hazard]?.base ?? null,
+      verification_predicted_observed: round(v?.predicted_observed_ratio, 3), verification_brier_exact: v?.brier_exact ?? null,
       sources: "Google Earth Engine, NASA GIBS", note: "Not an official warning. The score is a relative index, not a probability.",
     };
   }

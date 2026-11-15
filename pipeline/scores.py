@@ -6,6 +6,7 @@ Two scores are kept apart on purpose:
     today   the model plus what a satellite actually saw that day. The daily map uses this one.
 """
 import json
+import hashlib
 import os
 
 import numpy as np
@@ -27,18 +28,36 @@ def model():
     return json.load(open(K.MODEL, encoding="utf-8"))
 
 
+def model_id():
+    """Fingerprint the fitted parameters and static grids used for every year."""
+    digest = hashlib.sha256()
+    for name in ['model.json', 'model_fire.npz', 'model_flood.npz', 'static_small.npz']:
+        with open(os.path.join(HERE, name), 'rb') as source:
+            digest.update(name.encode('utf-8'))
+            digest.update(source.read())
+    return digest.hexdigest()
+
+
+def check_history_model(previous):
+    refitted = any(h.get('method', {}).get('version', '').endswith('refit-v1') for h in model().values() if isinstance(h, dict))
+    if previous.get('model_id') != model_id() and (refitted or previous.get('model_id')):
+        raise RuntimeError('Model changed: rebuild the full history before an incremental update')
+
+
 def output_cells(s):
     """Every cell touching Mongolia, so the map reaches the border."""
     return s["mask"] > 0.02
 
 
 # -------------------------------------------------------------------- fire
-def fire_model_score(f, sd, ndvi, S, beta, base):
+def fire_model_score(f, sd, ndvi, S, beta, base, year=None, time_cap=2025):
     """f: FWI; sd: snow depth cm; ndvi and S: same shape or broadcastable. Returns score 0..100."""
     fs = F.effis_score(f) / 100.0
     G = np.nan_to_num(np.broadcast_to(ndvi, fs.shape), nan=0.1)
     Sb = np.broadcast_to(S, fs.shape)
-    X = K.fire_design(fs.ravel(), Sb.ravel(), G.ravel())
+    if len(beta) not in (6, 7) or (len(beta) == 7 and year is None):
+        raise ValueError('Fire model feature layout or year is missing')
+    X = K.fire_design(fs.ravel(), Sb.ravel(), G.ravel(), year if len(beta) == 7 else None, time_cap)
     sc = K.lift_score(K.predict(X, np.array(beta)), base).reshape(fs.shape)
     return np.where(sd >= K.SNOW_CM, 0.0, sc)
 
@@ -48,7 +67,7 @@ def month_rain(y, m):
     p = os.path.join(CACHE, "monthly_rain.npy")
     if os.path.exists(p):
         r = np.load(p, mmap_mode="r")  # 440 MB: read only the month needed
-        v = r[y - 2001, m - 1] if y - 2001 < r.shape[0] else None
+        v = r[y - 2001, m - 1] if 0 <= y - 2001 < r.shape[0] else None
         return None if v is None or not np.isfinite(v).any() else np.array(v)
     e, dates = L.era5_year(y)  # the update job has no 26-year file, only the latest chunks
     i = [k for k, d in enumerate(dates) if d.month == m]
@@ -58,8 +77,13 @@ def month_rain(y, m):
 def fire_S_month(y, m, fm):
     """Multi-criteria susceptibility of a month on the whole grid, scaled 0..1. While a month is under way its SPI is
     not known yet and counts as normal."""
-    r = month_rain(y, m)
-    z = (r - fm["spi_mu"][m - 1]) / fm["spi_sd"][m - 1] if r is not None else np.zeros((C.NY, C.NX))
+    if 'spi_shape' in fm:
+        py, pm = y - (m == 1), (m - 2) % 12
+        r = month_rain(py, pm + 1)
+        z = K.R.gamma_spi(r, fm['spi_shape'][pm], fm['spi_scale'][pm], fm['spi_q'][pm]) if r is not None else np.zeros((C.NY, C.NX))
+    else:
+        r = month_rain(y, m)
+        z = (r - fm["spi_mu"][m - 1]) / fm["spi_sd"][m - 1] if r is not None else np.zeros((C.NY, C.NX))
     z = np.where(np.isfinite(z), z, 0.0)
     return (fm["S"] + K.W_SPI * K.spi_class(z)) / (float(fm["w"]) + K.W_SPI) / 5.0
 
@@ -69,14 +93,16 @@ def fire_year(y, dates, e_sd, f, M, fm):
     months = np.array([d.month for d in dates])
     for m in sorted(set(months)):
         i = months == m
-        out[i] = fire_model_score(f[i], e_sd[i], K.ndvi_prev(y, int(m)), fire_S_month(y, int(m), fm), M["fire"]["beta"], M["fire"]["base"])
+        out[i] = fire_model_score(f[i], e_sd[i], K.ndvi_prev(y, int(m)), fire_S_month(y, int(m), fm), M["fire"]["beta"], M["fire"]["base"], year=y, time_cap=M['fire'].get('method', {}).get('time_cap', 2025))
     return out
 
 
 # -------------------------------------------------------------------- dust
-def dust_model_score(w, sm, sd, ndvi, sti, bare, beta, base):
+def dust_model_score(w, sm, sd, ndvi, sti, bare, beta, base, month=None):
     b = lambda a, fill: np.nan_to_num(np.broadcast_to(a, w.shape), nan=fill)
-    X = K.dust_design(w.ravel(), sm.ravel(), b(ndvi, 0.1).ravel(), b(sti, 1.2).ravel(), b(bare, 0.0).ravel())
+    if len(beta) not in (8, 10) or (len(beta) == 10 and month is None):
+        raise ValueError('Dust model feature layout or month is missing')
+    X = K.dust_design(w.ravel(), sm.ravel(), b(ndvi, 0.1).ravel(), b(sti, 1.2).ravel(), b(bare, 0.0).ravel(), month if len(beta) == 10 else None)
     sc = K.lift_score(K.predict(X, np.array(beta)), base).reshape(w.shape)
     return np.where(sd >= K.SNOW_CM, 0.0, sc)
 
@@ -87,7 +113,7 @@ def dust_year(y, dates, e, s, M):
     for m in sorted(set(months)):
         i = months == m
         n, t = L.veg(y - (m == 1), 12 if m == 1 else int(m) - 1)
-        out[i] = dust_model_score(e["wmax"][i], e["sm"][i], e["sd"][i], n, t, s["lc_barren"], M["dust"]["beta"], M["dust"]["base"])
+        out[i] = dust_model_score(e["wmax"][i], e["sm"][i], e["sd"][i], n, t, s["lc_barren"], M["dust"]["beta"], M["dust"]["base"], month=int(m))
     return out
 
 

@@ -1,0 +1,28 @@
+{
+  "state": "BASELINE_DONE",
+  "stage": "review comparison",
+  "updated": "2026-11-15T17:20:22.117635+08:00",
+  "pid": 27568,
+  "comparison": {
+    "fire": {
+      "published_base": 0.0001784106962395581,
+      "repeated_base": 0.0001784106962395581,
+      "published_auc": 0.9,
+      "repeated_auc": 0.9,
+      "published_events": 3284,
+      "repeated_events": 3284,
+      "published_u_model": 15.794701095095345,
+      "repeated_u_model": 15.794701095095345
+    },
+    "dust": {
+      "published_base": 0.0223451805824529,
+      "repeated_base": 0.0223451805824529,
+      "published_auc": 0.687,
+      "repeated_auc": 0.687,
+      "published_events": 109219,
+      "repeated_events": 109219,
+      "published_u_model": 10.459889065917043,
+      "repeated_u_model": 10.459889065917043
+    }
+  }
+}

@@ -2,7 +2,7 @@
  * Anything not computed is written as such, never left to look like a real number. */
 import { el, svg } from "./dom.js";
 import { fin } from "./stats.js";
-import { drift, meaning, percent, times, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
+import { drift, meaning, percent, times, scoreModel, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
 
 const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 
@@ -98,12 +98,12 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
 
   /** The day in words first: the level, what it means as a chance or a return period, how wide the error is. */
   function summary(s, d, cls, lo, hi) {
-    const m = meaning(s.hazard, d.mean, d.budget?.U, Number(s.date.slice(5, 7)));
+    const m = meaning(s.hazard, d.mean, d.budget?.U, Number(s.date.slice(5, 7)), s.scoreModels);
     const name = (c) => classLabel(c.key), kids = [];
     kids.push(el("div", { class: "st-verdict" }, el("span", { class: "chip", style: `background:${cls.color};color:${cls.ink}`, text: name(cls) }), el("span", { text: t("verdict_" + (s.hazard ?? "all")) })));
     // at the ends of the scale the chance is only bounded: "16 times less or lower", "256 times more or higher"
     const dir = (r, end) => (r >= 1 ? fill(t(end ? "times_more_end" : "times_more"), { r: times(r) }) : fill(t(end ? "times_less_end" : "times_less"), { r: times(1 / r) }));
-    if (m.kind === "lift" && s.hazard === "dust") kids.push(el("p", { class: "st-say", text: fill(t("say_dust"), { p: `${m.floor ? "≤" : m.ceiling ? "≥" : "≈"}${percent(m.p)}`, base: percent(SCORE_MODEL.dust.base), dir: dir(m.ratio, m.floor || m.ceiling) }) }));
+    if (m.kind === "lift" && s.hazard === "dust") kids.push(el("p", { class: "st-say", text: fill(t("say_dust"), { p: `${m.floor ? "≤" : m.ceiling ? "≥" : "≈"}${percent(m.p)}`, base: percent(scoreModel("dust", s.scoreModels).base), dir: dir(m.ratio, m.floor || m.ceiling) }) }));
     if (m.kind === "lift" && s.hazard === "fire") {
       kids.push(el("p", { class: "st-say", text: fill(t("say_fire"), { dir: dir(m.ratio, m.floor || m.ceiling) }) }));
       // a fire stays rare even in the high classes: said here in plain numbers, from the check on unseen years
@@ -196,7 +196,8 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (fin(v.far) && fin(v.pod)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain"), { k: Math.max(1, Math.round(1000 * (1 - v.far))), pod: Math.round(100 * v.pod), period: v.period ?? "" }) }));
     else if (fin(v.events_hit)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain_flood"), { hit: v.events_hit, n: v.n }) }));
     // a known one-sided bias is said as such, not left inside a symmetric error
-    const dr = drift(s.hazard);
+    const refit = s.scoreModels?.[s.hazard]?.method?.version?.includes("refit");
+    const dr = refit || fin(v.predicted_observed_ratio) ? null : drift(s.hazard);
     if (dr && dr > 1.5) kids.push(el("p", { class: "st-note warn", text: fill(t("v_drift"), { x: dr.toFixed(dr < 10 ? 1 : 0), period: SCORE_MODEL[s.hazard].seen.period }) }));
     kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_details") }), el("dl", { class: "st-rows" },
       row(t("v_reference"), v.reference ?? "—"), row(t("v_period"), `${v.period ?? "—"} · n=${v.n ?? "—"}`),
@@ -204,7 +205,25 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
       fin(v.pod) ? row(t("v_pod_far"), `${f(v.pod, 2)} · ${f(v.far, 3)}`) : null,
       fin(v.share_flagged) ? row(t("v_flagged"), `${f(v.share_flagged * 100, 1)}%`) : null,
       fin(v.events_hit) ? row(t("v_events"), `${v.events_hit} / ${v.n}`) : null,
-      fin(v.csi) ? row(t("v_csi_brier"), `${f(v.csi, 3)} · ${sig2(v.brier)}`) : null)));
+      fin(v.csi) ? row(t("v_csi_brier"), `${f(v.csi, 3)} · ${sig2(v.brier_exact ?? v.brier)}`) : null,
+      fin(v.predicted_observed_ratio) ? row(t("v_calibration_ratio"), f(v.predicted_observed_ratio, 2)) : null,
+      fin(v.brier_skill_training_base) ? row(t("v_brier_skill"), f(v.brier_skill_training_base, 3)) : null,
+      fin(v.valid_cell_days) ? row(t("v_valid_days"), String(v.valid_cell_days)) : null)));
+    if (fin(v.predicted_observed_ratio)) kids.push(el("p", { class: "st-note", text: t("v_calibration_note") }));
+    if (v.seasons) kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_seasons") }), el("dl", { class: "st-rows" },
+      Object.entries(v.seasons).map(([season, result]) => row(season, `AUC ${f(result.auc, 3)} · n=${result.events}`)))));
+    if (s.refitReview) {
+      const review = s.refitReview, before = review.baseline, after = review.candidate;
+      kids.push(el("details", { class: "st-help" }, el("summary", { text: t("v_refit_comparison") }),
+        el("p", { class: "st-note", text: t(review.accepted ? "v_refit_accepted" : "v_refit_retained") }),
+        el("p", { class: "st-note", text: `${t("v_refit_period")}: ${review.period}` }),
+        el("dl", { class: "st-rows" },
+          row("AUC", `${f(before.auc, 3)} → ${f(after.auc, 3)}`),
+          row(t("v_calibration_ratio"), `${f(before.predicted_observed_ratio, 2)} → ${f(after.predicted_observed_ratio, 2)}`),
+          row("Brier", `${sig2(before.brier_exact)} → ${sig2(after.brier_exact)}`)),
+        el("p", { class: "st-note", text: t("v_refit_caveat") }),
+        el("a", { href: "docs/REFIT_RESULTS_2026.md", target: "_blank", rel: "noopener", text: t("v_refit_report") })));
+    }
     return kids;
   }
 
