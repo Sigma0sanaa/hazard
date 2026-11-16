@@ -97,9 +97,9 @@ def process_year(y, e, dates, f, state, ctx, from_month):
             r0 = 0.79 * np.nan_to_num(rain_all[k - 1]) + 0.21 * np.nan_to_num(rain_all[k])  # 19 h of the day before, 5 h of this one
             state, fv = F.step(state, np.nan_to_num(T), np.nan_to_num(RH, nan=50.0), np.nan_to_num(np.hypot(U, V) * 3.6), r0, d.month)
             state = tuple(np.where(sd >= K.SNOW_CM, v0, v) for v, v0 in zip(state, (F.FFMC0, F.DMC0, F.DC0)))
-            fx.append(S.fire_model_score(fv, sd, K.ndvi_prev(y, d.month), S.fire_S_month(y, d.month, fm), M["fire"]["beta"], M["fire"]["base"]))
+            fx.append(S.fire_model_score(fv, sd, K.ndvi_prev(y, d.month), S.fire_S_month(y, d.month, fm), M["fire"]["beta"], M["fire"]["base"], year=y, time_cap=M['fire'].get('method', {}).get('time_cap', 2025)))
             nd, st = L.veg(y - (d.month == 1), 12 if d.month == 1 else d.month - 1)
-            dx.append(S.dust_model_score(np.nan_to_num(WM), sm, sd, nd, st, s["lc_barren"], M["dust"]["beta"], M["dust"]["base"]))
+            dx.append(S.dust_model_score(np.nan_to_num(WM), sm, sd, nd, st, s["lc_barren"], M["dust"]["beta"], M["dust"]["base"], month=d.month))
         fire_m = np.concatenate([fire_m, np.array(fx, np.float32)])
         dust_m = np.concatenate([dust_m, np.array(dx, np.float32)])
         wmax = np.concatenate([wmax, np.array([a[4] for _, a in extra], np.float32)])
@@ -149,9 +149,11 @@ def manifest(ctx):
             unc[h]["u_model"] = round(M[h]["u_model"], 2)
     src = lambda n, r, role: dict(name=n, resolution=r, role=role)
     return dict(
-        version=2, generated_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        version=2, model_id=S.model_id(), generated_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         grid=C.GRID, daily_bands=HAZ, first_date="2001-01-01", last_date=str(ctx["last_day"]),
         bridge_from=str(ctx["bridge_from"]) if ctx.get("bridge_from") else None, first_month="2001-01", uncertainty=unc, verification=ver,
+        score_models={h: dict(base=M[h]['base'], method=M[h].get('method', {'version': 'legacy'})) for h in ('fire', 'dust')},
+        refit_review=M.get('refit_review'),
         sources=dict(
             fire=[src("ERA5-Land (ECMWF)", "0.1°", "FWI weather, snow"), src("MODIS FIRMS (Terra, Aqua)", "1 km", "Active fire"), src("MODIS MCD64A1", "500 m", "Burnt-area frequency"),
                   src("MODIS MCD12Q1", "500 m", "Land cover"), src("MODIS MCD43A4", "500 m", "NDVI"), src("NOAA GFS", "0.25°", "Weather of the last days")],
@@ -177,6 +179,9 @@ def load_state(ym):
 
 
 def main(start=None):
+    if start:
+        previous = json.load(open(os.path.join(OUT, 'manifest.json'), encoding='utf-8'))
+        S.check_history_model(previous)
     s = L.static() if os.path.exists(os.path.join(CACHE, "static.npz")) else dict(np.load(os.path.join(HERE, "static_small.npz")))
     cells = S.output_cells(s)
     ctx = dict(s=s, M=S.model(), fm=dict(np.load(os.path.join(HERE, "model_fire.npz"))), z=np.load(os.path.join(HERE, "model_flood.npz")), cells=cells, prone=S.prone_rank(s, cells))

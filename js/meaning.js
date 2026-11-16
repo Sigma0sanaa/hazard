@@ -14,12 +14,22 @@ export const SCORE_MODEL = {
   dust: { base: 0.02235, event: "dust", months: [3, 4, 5] }, // TROPOMI aerosol index anomaly >= 1, fitted on March-May
 };
 
+/** Use the scale shipped with the displayed data; old manifests keep the legacy scale. */
+export function scoreModel(hazard, models) {
+  const legacy = SCORE_MODEL[hazard], data = models?.[hazard];
+  if (!legacy || !data) return legacy;
+  if (!Number.isFinite(data.base) || data.base <= 0 || data.base > 1) throw new Error("Invalid model base rate");
+  const refit = data.method?.version && data.method.version !== "legacy";
+  return { ...legacy, base: data.base, months: data.method?.months ?? legacy.months,
+    seen: refit ? undefined : legacy.seen, method: data.method };
+}
+
 /** How many times the fitted base rate stands above what the unseen years held, or null where that is not known. */
 export const drift = (hazard) => { const m = SCORE_MODEL[hazard]; return m?.seen ? m.base / m.seen.rate : null; };
 
 const clamp = (s) => Math.min(100, Math.max(0, s));
 /** The scale ends at 0 and 100 (stored in steps of 0.4), so a score at an end only bounds the chance: at 0 it is 1/16 of the
- * average or less (snow-covered ground is set to 0), at 100 it is 256 times or more. */
+ * average or less (snow-covered ground is set to 0), at 100 it is 64 times or more. */
 export const atFloor = (score) => score <= 0.2;
 export const atCeiling = (score) => score >= 99.8;
 /** The return levels are fitted to the annual maxima of 2001-2025. A return period far beyond the record is an
@@ -41,11 +51,11 @@ export function floodYears(score) {
 }
 
 /** Everything the summary needs: { kind, ratio, p, pLo, pHi, years, yearsLo, yearsHi, offSeason }. U is the 95 % error. */
-export function meaning(hazard, score, U, month) {
+export function meaning(hazard, score, U, month, models) {
   const lo = clamp(score - (U ?? 0)), hi = clamp(score + (U ?? 0));
-  const m = SCORE_MODEL[hazard];
+  const m = scoreModel(hazard, models);
   if (m) {
-    return { kind: "lift", ratio: lift(score), ratioLo: lift(lo), ratioHi: lift(hi), p: m.base * lift(score), pLo: m.base * lift(lo), pHi: Math.min(1, m.base * lift(hi)),
+    return { kind: "lift", ratio: lift(score), ratioLo: lift(lo), ratioHi: lift(hi), p: Math.min(1, m.base * lift(score)), pLo: Math.min(1, m.base * lift(lo)), pHi: Math.min(1, m.base * lift(hi)),
       floor: atFloor(score), ceiling: atCeiling(score), floorLo: atFloor(lo), ceilingHi: atCeiling(hi),
       offSeason: Boolean(m.months && month && !m.months.includes(month)) };
   }

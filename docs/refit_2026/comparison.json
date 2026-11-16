@@ -1,0 +1,794 @@
+{
+  "scope": "National 0.1-degree grid; no mining-source attribution",
+  "comparisons": {
+    "fire": {
+      "common_base": 0.00023373125177745857,
+      "years": [
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "metrics": {
+        "baseline": {
+          "all": {
+            "reference": "identical held-out observations",
+            "n": 3284,
+            "auc": 0.9,
+            "auc_ci": [
+              0.879,
+              0.911
+            ],
+            "pod": 0.629,
+            "far": 0.999,
+            "csi": 0.001,
+            "brier": 6e-05,
+            "share_flagged": 0.0552,
+            "valid_cell_days": 53923640,
+            "event_rate": 6.090093324560434e-05,
+            "mean_predicted_probability": 0.00020346028595424906,
+            "predicted_observed_ratio": 3.3408401991759997,
+            "brier_exact": 6.133988119301e-05,
+            "brier_skill_training_base": -0.006775090040066933,
+            "probability_checks": [
+              {
+                "label": "2018",
+                "count": 6703521,
+                "events": 289,
+                "predicted_events": 1321.6739039374424,
+                "squared_error": 292.68955396533363
+              },
+              {
+                "label": "2019",
+                "count": 6740455,
+                "events": 408,
+                "predicted_events": 1845.3655529389791,
+                "squared_error": 413.8807131116261
+              },
+              {
+                "label": "2020",
+                "count": 6758922,
+                "events": 227,
+                "predicted_events": 1271.8094781853829,
+                "squared_error": 230.24503225085908
+              },
+              {
+                "label": "2021",
+                "count": 6740455,
+                "events": 161,
+                "predicted_events": 1014.2800159006765,
+                "squared_error": 163.2229567815981
+              },
+              {
+                "label": "2022",
+                "count": 6740455,
+                "events": 394,
+                "predicted_events": 1524.4941547925534,
+                "squared_error": 398.2470597854988
+              },
+              {
+                "label": "2023",
+                "count": 6740455,
+                "events": 600,
+                "predicted_events": 1404.6003377202603,
+                "squared_error": 600.9415281673945
+              },
+              {
+                "label": "2024",
+                "count": 6758922,
+                "events": 391,
+                "predicted_events": 1222.3844061051727,
+                "squared_error": 393.6356782081567
+              },
+              {
+                "label": "2025",
+                "count": 6740455,
+                "events": 814,
+                "predicted_events": 1366.711364513516,
+                "squared_error": 814.8071488241753
+              }
+            ],
+            "u_model": 15.786008780304341,
+            "reliability_gaps_score": [
+              -5.0,
+              -10.761352331330055,
+              -6.192351327526456,
+              -4.968581100987439,
+              -3.3464282967129932,
+              -18.269607258589943,
+              -21.861355328111486,
+              -23.17638124826314,
+              -19.85204848645907,
+              -23.10838699726031
+            ]
+          }
+        },
+        "candidate": {
+          "all": {
+            "reference": "identical held-out observations",
+            "n": 3284,
+            "auc": 0.897,
+            "auc_ci": [
+              0.877,
+              0.909
+            ],
+            "pod": 0.565,
+            "far": 0.999,
+            "csi": 0.001,
+            "brier": 6e-05,
+            "share_flagged": 0.041,
+            "valid_cell_days": 53923640,
+            "event_rate": 6.090093324560434e-05,
+            "mean_predicted_probability": 0.00013155257761665996,
+            "predicted_observed_ratio": 2.1601077455763793,
+            "brier_exact": 6.1030341178928056e-05,
+            "brier_skill_training_base": -0.0016945915212032148,
+            "probability_checks": [
+              {
+                "label": "2018",
+                "count": 6703521,
+                "events": 289,
+                "predicted_events": 820.7966151377815,
+                "squared_error": 290.2665248540957
+              },
+              {
+                "label": "2019",
+                "count": 6740455,
+                "events": 408,
+                "predicted_events": 1278.459816200582,
+                "squared_error": 410.17595322871034
+              },
+              {
+                "label": "2020",
+                "count": 6758922,
+                "events": 227,
+                "predicted_events": 877.4238959025746,
+                "squared_error": 228.5993309851064
+              },
+              {
+                "label": "2021",
+                "count": 6740455,
+                "events": 161,
+                "predicted_events": 615.8788123092592,
+                "squared_error": 161.7801192750209
+              },
+              {
+                "label": "2022",
+                "count": 6740455,
+                "events": 394,
+                "predicted_events": 970.9356321736022,
+                "squared_error": 395.20191171695745
+              },
+              {
+                "label": "2023",
+                "count": 6740455,
+                "events": 600,
+                "predicted_events": 876.2875342493307,
+                "squared_error": 599.9176674825954
+              },
+              {
+                "label": "2024",
+                "count": 6758922,
+                "events": 391,
+                "predicted_events": 786.7240149358636,
+                "squared_error": 391.7385836304209
+              },
+              {
+                "label": "2025",
+                "count": 6740455,
+                "events": 814,
+                "predicted_events": 867.2875155638359,
+                "squared_error": 813.298055636785
+              }
+            ],
+            "u_model": 13.476078567351944,
+            "reliability_gaps_score": [
+              -5.0,
+              -1.0316654478182397,
+              1.7186220137025217,
+              2.6482563287066156,
+              -6.737835301476949,
+              -13.459513708636933,
+              -16.644027770165664,
+              -12.339669456289982,
+              -17.885994729673826,
+              -28.35945758882579
+            ]
+          }
+        }
+      },
+      "checks": {
+        "all": {
+          "auc_not_lower": false,
+          "brier_not_higher": true,
+          "calibration_closer_to_one": true,
+          "score_gap_not_higher": true
+        }
+      },
+      "passed": false
+    },
+    "dust": {
+      "common_base": 0.022799779166149496,
+      "years": [
+        2024,
+        2025,
+        2026
+      ],
+      "metrics": {
+        "baseline": {
+          "all": {
+            "reference": "identical held-out observations",
+            "n": 251223,
+            "auc": 0.613,
+            "auc_ci": [
+              0.596,
+              0.62
+            ],
+            "pod": 0.07,
+            "far": 0.926,
+            "csi": 0.037,
+            "brier": 0.01317,
+            "share_flagged": 0.0126,
+            "valid_cell_days": 19028188,
+            "event_rate": 0.013202675945812602,
+            "mean_predicted_probability": 0.01488022722166599,
+            "predicted_observed_ratio": 1.127061459566115,
+            "brier_exact": 0.013114686951290606,
+            "brier_skill_training_base": 0.0004407412808363764,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 6700036,
+                "events": 86867,
+                "predicted_events": 92386.62106409813,
+                "squared_error": 85181.29977681713
+              },
+              {
+                "label": "2025",
+                "count": 6733839,
+                "events": 72421,
+                "predicted_events": 98558.96168127308,
+                "squared_error": 73892.88767454207
+              },
+              {
+                "label": "2026",
+                "count": 5594313,
+                "events": 91935,
+                "predicted_events": 92198.1783112069,
+                "squared_error": 90474.54141894529
+              }
+            ],
+            "u_model": 11.287351775405872,
+            "reliability_gaps_score": [
+              16.901193158669283,
+              6.5633310565481615,
+              6.738808489107285,
+              -0.1401208944652339,
+              -14.04348829693662,
+              -9.189313735299692,
+              -11.788727214183623,
+              -10.848165635527195,
+              -15.30229182165742
+            ]
+          },
+          "MAM": {
+            "reference": "identical held-out observations",
+            "n": 109219,
+            "auc": 0.687,
+            "auc_ci": [
+              0.623,
+              0.721
+            ],
+            "pod": 0.132,
+            "far": 0.898,
+            "csi": 0.061,
+            "brier": 0.02104,
+            "share_flagged": 0.0279,
+            "valid_cell_days": 5059421,
+            "event_rate": 0.021587252770623358,
+            "mean_predicted_probability": 0.018615873746851946,
+            "predicted_observed_ratio": 0.8623549251336436,
+            "brier_exact": 0.020951947241746708,
+            "brier_skill_training_base": 0.008084485304569067,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1680388,
+                "events": 34157,
+                "predicted_events": 26930.045920032117,
+                "squared_error": 32021.934654457196
+              },
+              {
+                "label": "2025",
+                "count": 1698757,
+                "events": 26763,
+                "predicted_events": 35427.6506470008,
+                "squared_error": 27539.352079747758
+              },
+              {
+                "label": "2026",
+                "count": 1680276,
+                "events": 48299,
+                "predicted_events": 31827.846001138503,
+                "squared_error": 46443.435131580416
+              }
+            ],
+            "u_model": 10.459889065917043,
+            "reliability_gaps_score": [
+              21.01009283496227,
+              2.833171885260729,
+              3.416189616970584,
+              -0.8314991711119575,
+              -1.579853332465234,
+              -5.7339495132223135,
+              -8.519023101136852,
+              -17.47895190692273
+            ]
+          },
+          "JJA": {
+            "reference": "identical held-out observations",
+            "n": 102312,
+            "auc": 0.434,
+            "auc_ci": [
+              0.424,
+              0.449
+            ],
+            "pod": 0.022,
+            "far": 0.931,
+            "csi": 0.017,
+            "brier": 0.01993,
+            "share_flagged": 0.0064,
+            "valid_cell_days": 5086152,
+            "event_rate": 0.02011579677524384,
+            "mean_predicted_probability": 0.020973386301834585,
+            "predicted_observed_ratio": 1.0426326402166761,
+            "brier_exact": 0.019887235827133493,
+            "brier_skill_training_base": -0.00856463777624139,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1689286,
+                "events": 36165,
+                "predicted_events": 36566.10567417979,
+                "squared_error": 35638.08039108844
+              },
+              {
+                "label": "2025",
+                "count": 1698485,
+                "events": 31632,
+                "predicted_events": 35177.35104925076,
+                "squared_error": 31364.721343999194
+              },
+              {
+                "label": "2026",
+                "count": 1698381,
+                "events": 34515,
+                "predicted_events": 34930.37396241803,
+                "squared_error": 34146.70254155903
+              }
+            ],
+            "u_model": 16.152793062651295,
+            "reliability_gaps_score": [
+              28.356994474286722,
+              16.25995461121923,
+              5.307429174228197,
+              -15.434571877536175,
+              -17.696839859258056,
+              -15.88933004369796,
+              -5.915526865476096,
+              -12.319062805457776
+            ]
+          },
+          "SON": {
+            "reference": "identical held-out observations",
+            "n": 10981,
+            "auc": 0.41,
+            "auc_ci": [
+              0.324,
+              0.659
+            ],
+            "pod": 0.074,
+            "far": 0.984,
+            "csi": 0.013,
+            "brier": 0.00304,
+            "share_flagged": 0.0117,
+            "valid_cell_days": 4487105,
+            "event_rate": 0.0024472349098137885,
+            "mean_predicted_probability": 0.015825593721339723,
+            "predicted_observed_ratio": 6.466724407157097,
+            "brier_exact": 0.0029551408909712336,
+            "brier_skill_training_base": -0.0349045208103711,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1680497,
+                "events": 2156,
+                "predicted_events": 26080.737802463602,
+                "squared_error": 3153.9158592114118
+              },
+              {
+                "label": "2025",
+                "count": 1680264,
+                "events": 6633,
+                "predicted_events": 23466.312338791322,
+                "squared_error": 7474.417897604262
+              },
+              {
+                "label": "2026",
+                "count": 1126344,
+                "events": 2192,
+                "predicted_events": 21464.050573737153,
+                "squared_error": 2631.6937107658046
+              }
+            ],
+            "u_model": 36.83984143224156,
+            "reliability_gaps_score": [
+              10.520756196886406,
+              -25.0,
+              -32.1622318255407,
+              -45.0,
+              -55.0,
+              -57.845181062072946,
+              -25.547712770816453,
+              -6.208483481763366
+            ]
+          },
+          "DJF": {
+            "reference": "identical held-out observations",
+            "n": 28711,
+            "auc": 0.494,
+            "auc_ci": [
+              0.457,
+              0.537
+            ],
+            "pod": 0.008,
+            "far": 0.982,
+            "csi": 0.005,
+            "brier": 0.00663,
+            "share_flagged": 0.0029,
+            "valid_cell_days": 4395510,
+            "event_rate": 0.006531892772397287,
+            "mean_predicted_probability": 0.00256472788995271,
+            "predicted_observed_ratio": 0.39264696762794876,
+            "brier_exact": 0.00662823546307276,
+            "brier_skill_training_base": 0.018602044472428636,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1649865,
+                "events": 14389,
+                "predicted_events": 2809.731667422633,
+                "squared_error": 14367.36887206007
+              },
+              {
+                "label": "2025",
+                "count": 1656333,
+                "events": 7393,
+                "predicted_events": 4487.647646230198,
+                "squared_error": 7514.396353190852
+              },
+              {
+                "label": "2026",
+                "count": 1089312,
+                "events": 6929,
+                "predicted_events": 3975.9077739132063,
+                "squared_error": 7252.71003504003
+              }
+            ],
+            "u_model": 22.868978281322544,
+            "reliability_gaps_score": [
+              17.139030877383128,
+              6.302360241766387,
+              -23.197553101013526,
+              -21.9111315472568,
+              -19.434411263470018,
+              -33.375230138279996,
+              -28.59437997040586
+            ]
+          }
+        },
+        "candidate": {
+          "all": {
+            "reference": "identical held-out observations",
+            "n": 251223,
+            "auc": 0.709,
+            "auc_ci": [
+              0.701,
+              0.714
+            ],
+            "pod": 0.057,
+            "far": 0.878,
+            "csi": 0.04,
+            "brier": 0.01297,
+            "share_flagged": 0.0061,
+            "valid_cell_days": 19028188,
+            "event_rate": 0.013202675945812602,
+            "mean_predicted_probability": 0.011893729625208828,
+            "predicted_observed_ratio": 0.9008574984362224,
+            "brier_exact": 0.012935486908769535,
+            "brier_skill_training_base": 0.014098792161507667,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 6700036,
+                "events": 86867,
+                "predicted_events": 73757.93704839634,
+                "squared_error": 84141.60308948778
+              },
+              {
+                "label": "2025",
+                "count": 6733839,
+                "events": 72421,
+                "predicted_events": 77002.49115069516,
+                "squared_error": 72269.459468413
+              },
+              {
+                "label": "2026",
+                "count": 5594313,
+                "events": 91935,
+                "predicted_events": 75555.69513055161,
+                "squared_error": 89727.8142137048
+              }
+            ],
+            "u_model": 14.276194083909255,
+            "reliability_gaps_score": [
+              16.52637328453963,
+              -12.551824482209714,
+              -10.05498738707821,
+              0.15442561756745476,
+              -1.62784499603341,
+              -2.0398134968896002,
+              -4.450004686553569,
+              -6.911927738368121,
+              -13.475764549690027,
+              -35.359821965247384
+            ]
+          },
+          "MAM": {
+            "reference": "identical held-out observations",
+            "n": 109219,
+            "auc": 0.731,
+            "auc_ci": [
+              0.704,
+              0.764
+            ],
+            "pod": 0.107,
+            "far": 0.874,
+            "csi": 0.061,
+            "brier": 0.02102,
+            "share_flagged": 0.0183,
+            "valid_cell_days": 5059421,
+            "event_rate": 0.021587252770623358,
+            "mean_predicted_probability": 0.018633967345840375,
+            "predicted_observed_ratio": 0.8631930863939338,
+            "brier_exact": 0.020964109822810443,
+            "brier_skill_training_base": 0.007508679499186766,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1680388,
+                "events": 34157,
+                "predicted_events": 28959.108103455215,
+                "squared_error": 32195.834235682945
+              },
+              {
+                "label": "2025",
+                "count": 1698757,
+                "events": 26763,
+                "predicted_events": 33573.159309952054,
+                "squared_error": 27227.8813964301
+              },
+              {
+                "label": "2026",
+                "count": 1680276,
+                "events": 48299,
+                "predicted_events": 31744.81828945179,
+                "squared_error": 46642.5418517204
+              }
+            ],
+            "u_model": 14.420915730505763,
+            "reliability_gaps_score": [
+              21.01009283496227,
+              -12.47782749442678,
+              -2.4035970403359315,
+              3.574299093713627,
+              0.2886394247498103,
+              -3.0034660435030105,
+              -7.192490025257399,
+              -15.998697563874131,
+              -30.64633525241416
+            ]
+          },
+          "JJA": {
+            "reference": "identical held-out observations",
+            "n": 102312,
+            "auc": 0.543,
+            "auc_ci": [
+              0.438,
+              0.61
+            ],
+            "pod": 0.02,
+            "far": 0.892,
+            "csi": 0.017,
+            "brier": 0.0198,
+            "share_flagged": 0.0037,
+            "valid_cell_days": 5086152,
+            "event_rate": 0.02011579677524384,
+            "mean_predicted_probability": 0.021139341028204285,
+            "predicted_observed_ratio": 1.0508826105372124,
+            "brier_exact": 0.019725938671901675,
+            "brier_skill_training_base": -0.0003845865939267057,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1689286,
+                "events": 36165,
+                "predicted_events": 36582.5285207941,
+                "squared_error": 35363.49571113378
+              },
+              {
+                "label": "2025",
+                "count": 1698485,
+                "events": 31632,
+                "predicted_events": 35322.82576084769,
+                "squared_error": 30972.090762848165
+              },
+              {
+                "label": "2026",
+                "count": 1698381,
+                "events": 34515,
+                "predicted_events": 35612.5473676415,
+                "squared_error": 33993.535953988096
+              }
+            ],
+            "u_model": 12.32599826644081,
+            "reliability_gaps_score": [
+              28.356994474286722,
+              8.519282880926404,
+              2.5390367602651125,
+              -6.125892229544895,
+              -9.591335260212247,
+              -11.680526052920683,
+              -6.089718965212427,
+              -5.409085726298642
+            ]
+          },
+          "SON": {
+            "reference": "identical held-out observations",
+            "n": 10981,
+            "auc": 0.405,
+            "auc_ci": [
+              0.304,
+              0.602
+            ],
+            "pod": 0.043,
+            "far": 0.844,
+            "csi": 0.035,
+            "brier": 0.00245,
+            "share_flagged": 0.0007,
+            "valid_cell_days": 4487105,
+            "event_rate": 0.0024472349098137885,
+            "mean_predicted_probability": 0.004723136896039293,
+            "predicted_observed_ratio": 1.9299891796650936,
+            "brier_exact": 0.0024475585326641787,
+            "brier_skill_training_base": 0.1428532567969485,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1680497,
+                "events": 2156,
+                "predicted_events": 7458.648779839727,
+                "squared_error": 2231.347250991638
+              },
+              {
+                "label": "2025",
+                "count": 1680264,
+                "events": 6633,
+                "predicted_events": 6881.698635654922,
+                "squared_error": 6673.11868055816
+              },
+              {
+                "label": "2026",
+                "count": 1126344,
+                "events": 2192,
+                "predicted_events": 6852.863766407744,
+                "squared_error": 2077.9861981603026
+              }
+            ],
+            "u_model": 18.64794190637503,
+            "reliability_gaps_score": [
+              9.444166363801152,
+              -15.0,
+              -22.75471099201279,
+              -35.0,
+              -29.514129163251273,
+              -10.962984318546432,
+              -4.32047197771324,
+              5.728138969059273,
+              -5.476640015723731
+            ]
+          },
+          "DJF": {
+            "reference": "identical held-out observations",
+            "n": 28711,
+            "auc": 0.498,
+            "auc_ci": [
+              0.457,
+              0.544
+            ],
+            "pod": 0.003,
+            "far": 0.964,
+            "csi": 0.003,
+            "brier": 0.00653,
+            "share_flagged": 0.0005,
+            "valid_cell_days": 4395510,
+            "event_rate": 0.006531892772397287,
+            "mean_predicted_probability": 0.000757119150132377,
+            "predicted_observed_ratio": 0.11591114191767492,
+            "brier_exact": 0.006543278192995124,
+            "brier_skill_training_base": 0.03118109233907529,
+            "probability_checks": [
+              {
+                "label": "2024",
+                "count": 1649865,
+                "events": 14389,
+                "predicted_events": 757.6516443072971,
+                "squared_error": 14350.925891679417
+              },
+              {
+                "label": "2025",
+                "count": 1656333,
+                "events": 7393,
+                "predicted_events": 1224.8074442404954,
+                "squared_error": 7396.3686285765825
+              },
+              {
+                "label": "2026",
+                "count": 1089312,
+                "events": 6929,
+                "predicted_events": 1345.4657070505718,
+                "squared_error": 7013.750209835996
+              }
+            ],
+            "u_model": 10.79922074844904,
+            "reliability_gaps_score": [
+              16.91315438192732,
+              -4.776984194416119,
+              5.919883121076911,
+              0.29011887963820726,
+              -2.129889749646992,
+              -15.045952796804883,
+              -15.538387987003375
+            ]
+          }
+        }
+      },
+      "checks": {
+        "MAM": {
+          "auc_not_lower": true,
+          "brier_not_higher": false,
+          "calibration_closer_to_one": true,
+          "score_gap_not_higher": false
+        },
+        "all": {
+          "auc_not_lower": true,
+          "brier_not_higher": true,
+          "calibration_closer_to_one": true,
+          "score_gap_not_higher": false
+        }
+      },
+      "passed": false
+    }
+  },
+  "all_passed": false,
+  "limitations": [
+    "All-season baseline dust evaluation extrapolates its spring-trained fit.",
+    "2026 has January-October observations only.",
+    "This temporal test is not spatially independent station validation.",
+    "Criteria are screening checks, not proof of statistically significant improvement."
+  ]
+}

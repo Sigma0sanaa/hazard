@@ -1,0 +1,662 @@
+{
+ "fire": {
+  "beta": [
+   -13.822019079111206,
+   -0.4769282483689858,
+   8.572067256444944,
+   -1.4441864282806365,
+   1.5607964738373057,
+   3.033714172256417,
+   -0.7202198860024276
+  ],
+  "base": 0.00017913658097244391,
+  "verification": {
+   "reference": "MODIS FIRMS",
+   "n": 3284,
+   "auc": 0.897,
+   "auc_ci": [
+    0.875,
+    0.91
+   ],
+   "pod": 0.564,
+   "far": 0.999,
+   "csi": 0.001,
+   "brier": 6e-05,
+   "share_flagged": 0.0408,
+   "period": "2018-2025",
+   "valid_cell_days": 53923640,
+   "event_rate": 6.090093324560434e-05,
+   "mean_predicted_probability": 0.00013155257761665996,
+   "predicted_observed_ratio": 2.1601077455763793,
+   "brier_exact": 6.1030341178928056e-05,
+   "brier_skill_training_base": -0.001687032748360462,
+   "probability_checks": [
+    {
+     "label": "2018",
+     "count": 6703521,
+     "events": 289,
+     "predicted_events": 820.7966151377815,
+     "squared_error": 290.2665248540957
+    },
+    {
+     "label": "2019",
+     "count": 6740455,
+     "events": 408,
+     "predicted_events": 1278.459816200582,
+     "squared_error": 410.17595322871034
+    },
+    {
+     "label": "2020",
+     "count": 6758922,
+     "events": 227,
+     "predicted_events": 877.4238959025746,
+     "squared_error": 228.5993309851064
+    },
+    {
+     "label": "2021",
+     "count": 6740455,
+     "events": 161,
+     "predicted_events": 615.8788123092592,
+     "squared_error": 161.7801192750209
+    },
+    {
+     "label": "2022",
+     "count": 6740455,
+     "events": 394,
+     "predicted_events": 970.9356321736022,
+     "squared_error": 395.20191171695745
+    },
+    {
+     "label": "2023",
+     "count": 6740455,
+     "events": 600,
+     "predicted_events": 876.2875342493307,
+     "squared_error": 599.9176674825954
+    },
+    {
+     "label": "2024",
+     "count": 6758922,
+     "events": 391,
+     "predicted_events": 786.7240149358636,
+     "squared_error": 391.7385836304209
+    },
+    {
+     "label": "2025",
+     "count": 6740455,
+     "events": 814,
+     "predicted_events": 867.2875155638359,
+     "squared_error": 813.298055636785
+    }
+   ],
+   "reliability_gaps_score": [
+    -5.0,
+    -0.892659269985856,
+    1.7554690867755696,
+    2.4763614751683747,
+    -6.703374158669561,
+    -13.400381502204858,
+    -16.60596024290045,
+    -12.39567094365185,
+    -17.980687585887722,
+    -28.133114544750953
+   ],
+   "auc_fwi_only": 0.668,
+   "auc_mce_only": 0.879
+  },
+  "u_model": 13.430205366038999,
+  "beta_test_split": [
+   -13.945962840069255,
+   -0.37832437713497263,
+   8.93612726987873,
+   -1.329118293470044,
+   1.3743157992055421,
+   3.2016336640986416,
+   -0.5355177379253103
+  ],
+  "method": {
+   "version": "fire-refit-v1",
+   "time_cap": 2025,
+   "test_time_cap": 2017,
+   "spi": "zero-adjusted-gamma",
+   "spi_lag_months": 1,
+   "spi_reference": "2001-2025",
+   "spi_reference_years": 25
+  }
+ },
+ "dust": {
+  "beta": [
+   -4.703840707674756,
+   0.1424057201433311,
+   7.550328262187134,
+   0.05274653761621383,
+   -0.1323470457914028,
+   -0.07941634354746983,
+   -0.1949937129065134,
+   -2.9429191879199212,
+   0.8217305854510774,
+   -0.9994365293152818
+  ],
+  "base": 0.014191618658541745,
+  "verification": {
+   "reference": "Sentinel-5P TROPOMI AAI anomaly \u2265 1",
+   "n": 251223,
+   "auc": 0.709,
+   "auc_ci": [
+    0.701,
+    0.714
+   ],
+   "pod": 0.076,
+   "far": 0.904,
+   "csi": 0.044,
+   "brier": 0.01298,
+   "share_flagged": 0.0104,
+   "period": "2024-2026, all available months (2026 through October)",
+   "valid_cell_days": 19028188,
+   "event_rate": 0.013202675945812602,
+   "mean_predicted_probability": 0.011893729625208828,
+   "predicted_observed_ratio": 0.9008574984362224,
+   "brier_exact": 0.012935486908769535,
+   "brier_skill_training_base": 0.0073117470118301275,
+   "probability_checks": [
+    {
+     "label": "2024-01",
+     "count": 541845,
+     "events": 3232,
+     "predicted_events": 92.33195530815614,
+     "squared_error": 3232.0573883301176
+    },
+    {
+     "label": "2024-02",
+     "count": 535543,
+     "events": 6830,
+     "predicted_events": 445.4603161742691,
+     "squared_error": 6791.56098344409
+    },
+    {
+     "label": "2024-03",
+     "count": 554010,
+     "events": 2831,
+     "predicted_events": 3848.7843380571067,
+     "squared_error": 2605.665043592601
+    },
+    {
+     "label": "2024-04",
+     "count": 553993,
+     "events": 19244,
+     "predicted_events": 10130.213463729819,
+     "squared_error": 17645.343281586815
+    },
+    {
+     "label": "2024-05",
+     "count": 572385,
+     "events": 12082,
+     "predicted_events": 14980.110301668292,
+     "squared_error": 11944.825910503529
+    },
+    {
+     "label": "2024-06",
+     "count": 553848,
+     "events": 22365,
+     "predicted_events": 16160.885044002162,
+     "squared_error": 21638.111594734717
+    },
+    {
+     "label": "2024-07",
+     "count": 572346,
+     "events": 10993,
+     "predicted_events": 12302.577048652845,
+     "squared_error": 10849.128689692892
+    },
+    {
+     "label": "2024-08",
+     "count": 563092,
+     "events": 2807,
+     "predicted_events": 8119.066428139092,
+     "squared_error": 2876.255426706167
+    },
+    {
+     "label": "2024-09",
+     "count": 554010,
+     "events": 244,
+     "predicted_events": 4608.33424131596,
+     "squared_error": 301.118308548749
+    },
+    {
+     "label": "2024-10",
+     "count": 572477,
+     "events": 625,
+     "predicted_events": 1965.7347233862095,
+     "squared_error": 640.490041535651
+    },
+    {
+     "label": "2024-11",
+     "count": 554010,
+     "events": 1287,
+     "predicted_events": 884.5798151375567,
+     "squared_error": 1289.7389009072376
+    },
+    {
+     "label": "2024-12",
+     "count": 572477,
+     "events": 4327,
+     "predicted_events": 219.8593728248719,
+     "squared_error": 4327.307519905208
+    },
+    {
+     "label": "2025-01",
+     "count": 572477,
+     "events": 2404,
+     "predicted_events": 311.57061911730176,
+     "squared_error": 2404.8038948673934
+    },
+    {
+     "label": "2025-02",
+     "count": 517076,
+     "events": 930,
+     "predicted_events": 763.9524402504544,
+     "squared_error": 931.7466013535723
+    },
+    {
+     "label": "2025-03",
+     "count": 572477,
+     "events": 1560,
+     "predicted_events": 6094.659770850974,
+     "squared_error": 1992.0451090353777
+    },
+    {
+     "label": "2025-04",
+     "count": 553986,
+     "events": 6418,
+     "predicted_events": 11059.604711970642,
+     "squared_error": 6655.223910902328
+    },
+    {
+     "label": "2025-05",
+     "count": 572294,
+     "events": 18785,
+     "predicted_events": 16418.89482713043,
+     "squared_error": 18580.612376492394
+    },
+    {
+     "label": "2025-06",
+     "count": 553796,
+     "events": 22054,
+     "predicted_events": 14635.221706193268,
+     "squared_error": 21306.171419096114
+    },
+    {
+     "label": "2025-07",
+     "count": 572270,
+     "events": 6910,
+     "predicted_events": 12251.107431883243,
+     "squared_error": 6911.330519585554
+    },
+    {
+     "label": "2025-08",
+     "count": 572419,
+     "events": 2668,
+     "predicted_events": 8436.496622771185,
+     "squared_error": 2754.5888241664925
+    },
+    {
+     "label": "2025-09",
+     "count": 554010,
+     "events": 2085,
+     "predicted_events": 4721.994422205915,
+     "squared_error": 2115.2313432960564
+    },
+    {
+     "label": "2025-10",
+     "count": 572477,
+     "events": 496,
+     "predicted_events": 1424.911695976171,
+     "squared_error": 500.2347511359292
+    },
+    {
+     "label": "2025-11",
+     "count": 553777,
+     "events": 4052,
+     "predicted_events": 734.7925174728372,
+     "squared_error": 4057.6525861261734
+    },
+    {
+     "label": "2025-12",
+     "count": 566780,
+     "events": 4059,
+     "predicted_events": 149.28438487273908,
+     "squared_error": 4059.818132355617
+    },
+    {
+     "label": "2026-01",
+     "count": 572327,
+     "events": 6400,
+     "predicted_events": 255.34457212906756,
+     "squared_error": 6402.605686762014
+    },
+    {
+     "label": "2026-02",
+     "count": 516985,
+     "events": 529,
+     "predicted_events": 1090.1211349215043,
+     "squared_error": 611.1445230739834
+    },
+    {
+     "label": "2026-03",
+     "count": 572386,
+     "events": 1296,
+     "predicted_events": 3678.021726782456,
+     "squared_error": 1357.911870859045
+    },
+    {
+     "label": "2026-04",
+     "count": 553595,
+     "events": 4767,
+     "predicted_events": 12809.256020399269,
+     "squared_error": 5266.990320375619
+    },
+    {
+     "label": "2026-05",
+     "count": 554295,
+     "events": 42236,
+     "predicted_events": 15257.540542270066,
+     "squared_error": 40017.63966048574
+    },
+    {
+     "label": "2026-06",
+     "count": 553780,
+     "events": 10043,
+     "predicted_events": 14905.494901142092,
+     "squared_error": 9917.238498992036
+    },
+    {
+     "label": "2026-07",
+     "count": 572226,
+     "events": 16328,
+     "predicted_events": 12574.337283776067,
+     "squared_error": 16000.714900396502
+    },
+    {
+     "label": "2026-08",
+     "count": 572375,
+     "events": 8144,
+     "predicted_events": 8132.715182723339,
+     "squared_error": 8075.5825545995585
+    },
+    {
+     "label": "2026-09",
+     "count": 553980,
+     "events": 463,
+     "predicted_events": 4501.050240921802,
+     "squared_error": 499.0282076966454
+    },
+    {
+     "label": "2026-10",
+     "count": 572364,
+     "events": 1729,
+     "predicted_events": 2351.813525485943,
+     "squared_error": 1578.9579904636576
+    }
+   ],
+   "reliability_gaps_score": [
+    23.182380803352693,
+    -15.0,
+    -8.029260189264331,
+    -9.23108982158137,
+    2.0724046348657765,
+    -7.143300649450062,
+    -3.8227196201597877,
+    -4.044495761612026,
+    -10.697981034609782,
+    -16.211930737749597
+   ],
+   "seasons": {
+    "DJF": {
+     "auc": 0.4982901213279525,
+     "events": 28711,
+     "valid_cell_days": 4395510
+    },
+    "MAM": {
+     "auc": 0.7310083624478104,
+     "events": 109219,
+     "valid_cell_days": 5059421
+    },
+    "JJA": {
+     "auc": 0.542719403653032,
+     "events": 102312,
+     "valid_cell_days": 5086152
+    },
+    "SON": {
+     "auc": 0.40513760639384266,
+     "events": 10981,
+     "valid_cell_days": 4487105
+    }
+   },
+   "auc_wind_only": 0.575
+  },
+  "u_model": 11.728900421839311,
+  "aai_event": 1.0,
+  "method": {
+   "version": "dust-refit-v1",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "wind_threshold": "9.8 - 0.9 * bare_fraction; experimental regional interpolation"
+  }
+ },
+ "flood": {
+  "verification": {
+   "reference": "Global Flood Database (MODIS)",
+   "period": "2001-2018",
+   "n": 12,
+   "auc": 0.685,
+   "events_hit": 5,
+   "events": [
+    {
+     "start": "2001-05-12",
+     "end": "2001-06-08",
+     "cause": "Snowmelt",
+     "flooded_cells": 375,
+     "peak_in_flood": 66.6,
+     "share_high": 0.005,
+     "share_high_elsewhere": 0.001
+    },
+    {
+     "start": "2003-04-23",
+     "end": "2003-05-13",
+     "cause": "Snowmelt",
+     "flooded_cells": 399,
+     "peak_in_flood": 43.4,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.022
+    },
+    {
+     "start": "2004-04-14",
+     "end": "2004-05-16",
+     "cause": "Rain and snowmelt",
+     "flooded_cells": 489,
+     "peak_in_flood": 27.8,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2006-04-21",
+     "end": "2006-05-31",
+     "cause": "Snowmelt",
+     "flooded_cells": 1060,
+     "peak_in_flood": 58.8,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2006-07-12",
+     "end": "2006-07-14",
+     "cause": "Heavy rain",
+     "flooded_cells": 201,
+     "peak_in_flood": 84.9,
+     "share_high": 0.1,
+     "share_high_elsewhere": 0.003
+    },
+    {
+     "start": "2007-05-11",
+     "end": "2007-06-13",
+     "cause": "Snowmelt",
+     "flooded_cells": 11,
+     "peak_in_flood": 2.6,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2007-07-14",
+     "end": "2007-08-03",
+     "cause": "Heavy rain",
+     "flooded_cells": 61,
+     "peak_in_flood": 69.7,
+     "share_high": 0.066,
+     "share_high_elsewhere": 0.012
+    },
+    {
+     "start": "2010-07-06",
+     "end": "2010-07-13",
+     "cause": "Torrential Rain",
+     "flooded_cells": 109,
+     "peak_in_flood": 14.8,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2013-08-07",
+     "end": "2013-10-14",
+     "cause": "Heavy Rain, began with #4079",
+     "flooded_cells": 1486,
+     "peak_in_flood": 97.0,
+     "share_high": 0.178,
+     "share_high_elsewhere": 0.017
+    },
+    {
+     "start": "2015-05-15",
+     "end": "2015-06-02",
+     "cause": "Heavy Rain",
+     "flooded_cells": 8,
+     "peak_in_flood": 19.7,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2017-04-14",
+     "end": "2017-04-21",
+     "cause": "Snowmelt",
+     "flooded_cells": 3,
+     "peak_in_flood": 0.0,
+     "share_high": 0.0,
+     "share_high_elsewhere": 0.0
+    },
+    {
+     "start": "2018-07-11",
+     "end": "2018-07-19",
+     "cause": "Heavy Rain",
+     "flooded_cells": 1707,
+     "peak_in_flood": 99.4,
+     "share_high": 0.074,
+     "share_high_elsewhere": 0.038
+    }
+   ]
+  }
+ },
+ "u_input": {
+  "fire": [
+   0.62,
+   0.91,
+   2.31,
+   2.75,
+   3.13,
+   3.33,
+   3.38,
+   3.37,
+   3.39,
+   3.45,
+   3.57,
+   3.63,
+   3.81,
+   4.14,
+   4.36,
+   4.48,
+   4.49,
+   4.45,
+   4.38,
+   4.3,
+   4.15,
+   3.87,
+   3.56,
+   4.42,
+   4.42,
+   4.42
+  ],
+  "dust": [
+   0.0,
+   0.0,
+   0.08,
+   0.17,
+   0.25,
+   0.89,
+   1.48,
+   1.77,
+   2.25,
+   2.11,
+   2.55,
+   2.66,
+   2.57,
+   4.02,
+   11.06,
+   14.04,
+   16.35,
+   17.65,
+   17.61,
+   15.51,
+   12.01,
+   10.33,
+   8.52,
+   6.65,
+   4.94,
+   2.9
+  ],
+  "flood": [
+   0.35,
+   0.63,
+   8.76,
+   13.56,
+   17.88,
+   21.24,
+   23.57,
+   24.83,
+   23.97,
+   20.97,
+   17.9,
+   15.69,
+   14.77,
+   14.48,
+   14.17,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76,
+   13.76
+  ]
+ }
+}

@@ -1,40 +1,127 @@
 {
  "fire": {
   "beta": [
-   -13.46445484756471,
-   -0.7921882208868687,
-   8.336223478546605,
-   -1.6081610422041555,
-   1.8311292235705643,
-   3.3648056417809364
+   -13.822019079111206,
+   -0.4769282483689858,
+   8.572067256444944,
+   -1.4441864282806365,
+   1.5607964738373057,
+   3.033714172256417,
+   -0.7202198860024276
   ],
-  "base": 0.0001784106962395581,
+  "base": 0.00017913658097244391,
   "verification": {
    "reference": "MODIS FIRMS",
    "n": 3284,
-   "auc": 0.9,
+   "auc": 0.897,
    "auc_ci": [
-    0.88,
-    0.911
+    0.875,
+    0.91
    ],
-   "pod": 0.629,
+   "pod": 0.564,
    "far": 0.999,
    "csi": 0.001,
    "brier": 6e-05,
-   "share_flagged": 0.0552,
+   "share_flagged": 0.0408,
    "period": "2018-2025",
+   "valid_cell_days": 53923640,
+   "event_rate": 6.090093324560434e-05,
+   "mean_predicted_probability": 0.00013155257761665996,
+   "predicted_observed_ratio": 2.1601077455763793,
+   "brier_exact": 6.1030341178928056e-05,
+   "brier_skill_training_base": -0.001687032748360462,
+   "probability_checks": [
+    {
+     "label": "2018",
+     "count": 6703521,
+     "events": 289,
+     "predicted_events": 820.7966151377815,
+     "squared_error": 290.2665248540957
+    },
+    {
+     "label": "2019",
+     "count": 6740455,
+     "events": 408,
+     "predicted_events": 1278.459816200582,
+     "squared_error": 410.17595322871034
+    },
+    {
+     "label": "2020",
+     "count": 6758922,
+     "events": 227,
+     "predicted_events": 877.4238959025746,
+     "squared_error": 228.5993309851064
+    },
+    {
+     "label": "2021",
+     "count": 6740455,
+     "events": 161,
+     "predicted_events": 615.8788123092592,
+     "squared_error": 161.7801192750209
+    },
+    {
+     "label": "2022",
+     "count": 6740455,
+     "events": 394,
+     "predicted_events": 970.9356321736022,
+     "squared_error": 395.20191171695745
+    },
+    {
+     "label": "2023",
+     "count": 6740455,
+     "events": 600,
+     "predicted_events": 876.2875342493307,
+     "squared_error": 599.9176674825954
+    },
+    {
+     "label": "2024",
+     "count": 6758922,
+     "events": 391,
+     "predicted_events": 786.7240149358636,
+     "squared_error": 391.7385836304209
+    },
+    {
+     "label": "2025",
+     "count": 6740455,
+     "events": 814,
+     "predicted_events": 867.2875155638359,
+     "squared_error": 813.298055636785
+    }
+   ],
+   "reliability_gaps_score": [
+    -5.0,
+    -0.892659269985856,
+    1.7554690867755696,
+    2.4763614751683747,
+    -6.703374158669561,
+    -13.400381502204858,
+    -16.60596024290045,
+    -12.39567094365185,
+    -17.980687585887722,
+    -28.133114544750953
+   ],
    "auc_fwi_only": 0.668,
-   "auc_mce_only": 0.883
+   "auc_mce_only": 0.879
   },
-  "u_model": 15.794701095095345,
+  "u_model": 13.430205366038999,
   "beta_test_split": [
-   -13.431730339602277,
-   -0.6687502374376858,
-   8.63224427964986,
-   -1.3415489996951402,
-   1.656742280573421,
-   3.148802814845265
-  ]
+   -13.945962840069255,
+   -0.37832437713497263,
+   8.93612726987873,
+   -1.329118293470044,
+   1.3743157992055421,
+   3.2016336640986416,
+   -0.5355177379253103
+  ],
+  "method": {
+   "version": "fire-refit-v1",
+   "time_cap": 2025,
+   "test_time_cap": 2017,
+   "spi": "zero-adjusted-gamma",
+   "spi_lag_months": 1,
+   "spi_reference": "2001-2025",
+   "spi_reference_years": 25
+  }
  },
  "dust": {
   "beta": [
@@ -49,7 +136,7 @@
   ],
   "base": 0.0223451805824529,
   "verification": {
-   "reference": "Sentinel-5P TROPOMI AAI anomaly \u2265 1",
+   "reference": "Sentinel-5P TROPOMI AAI anomaly ≥ 1",
    "n": 109219,
    "auc": 0.687,
    "auc_ci": [
@@ -61,11 +148,19 @@
    "csi": 0.061,
    "brier": 0.02104,
    "share_flagged": 0.0279,
-   "period": "2024-2026, 3-5 \u0441\u0430\u0440",
+   "period": "2024-2026, 3-5 сар",
    "auc_wind_only": 0.631
   },
   "u_model": 10.459889065917043,
-  "aai_event": 1.0
+  "aai_event": 1.0,
+  "method": {
+   "version": "legacy",
+   "months": [
+    3,
+    4,
+    5
+   ]
+  }
  },
  "flood": {
   "verification": {
@@ -188,32 +283,32 @@
  },
  "u_input": {
   "fire": [
-   0.19,
-   0.5,
-   1.96,
-   2.0,
-   1.88,
-   1.92,
-   2.32,
-   2.82,
-   3.1,
-   3.2,
-   3.25,
-   3.31,
-   3.43,
-   3.56,
-   3.64,
-   3.85,
+   0.62,
+   0.91,
+   2.31,
+   2.75,
+   3.13,
+   3.33,
+   3.38,
+   3.37,
+   3.39,
+   3.45,
+   3.57,
+   3.63,
+   3.81,
    4.14,
-   4.39,
-   4.59,
-   4.66,
-   4.63,
-   4.52,
+   4.36,
+   4.48,
+   4.49,
+   4.45,
+   4.38,
    4.3,
-   3.96,
-   3.17,
-   2.08
+   4.15,
+   3.87,
+   3.56,
+   4.42,
+   4.42,
+   4.42
   ],
   "dust": [
    0.0,
@@ -271,5 +366,68 @@
    13.76,
    13.76
   ]
+ },
+ "refit_review": {
+  "date": "2026-11-16",
+  "report": "https://github.com/Sigma0sanaa/hazard/blob/main/docs/REFIT_2026.md",
+  "hazards": {
+   "fire": {
+    "accepted": true,
+    "decision": "owner",
+    "failed_checks": [
+     "auc_not_lower"
+    ],
+    "period": "2018–2025",
+    "baseline": {
+     "auc": 0.9,
+     "auc_ci": [
+      0.879,
+      0.911
+     ],
+     "predicted_observed_ratio": 3.3408401991759997,
+     "brier_exact": 6.133988119301e-05,
+     "u_model": 15.786008780304341
+    },
+    "candidate": {
+     "auc": 0.897,
+     "auc_ci": [
+      0.877,
+      0.909
+     ],
+     "predicted_observed_ratio": 2.1601077455763793,
+     "brier_exact": 6.1030341178928056e-05,
+     "u_model": 13.476078567351944
+    }
+   },
+   "dust": {
+    "accepted": false,
+    "decision": "retained",
+    "failed_checks": [
+     "brier_not_higher (3–5)",
+     "score_gap_not_higher"
+    ],
+    "period": "2024–2026, 3–5 сар",
+    "baseline": {
+     "auc": 0.687,
+     "auc_ci": [
+      0.623,
+      0.721
+     ],
+     "predicted_observed_ratio": 0.8623549251336436,
+     "brier_exact": 0.020951947241746708,
+     "u_model": 10.459889065917043
+    },
+    "candidate": {
+     "auc": 0.731,
+     "auc_ci": [
+      0.704,
+      0.764
+     ],
+     "predicted_observed_ratio": 0.8631930863939338,
+     "brier_exact": 0.020964109822810443,
+     "u_model": 14.420915730505763
+    }
+   }
+  }
  }
 }

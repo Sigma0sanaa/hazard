@@ -5,6 +5,7 @@
 import { el } from "./dom.js";
 
 const REF = {
+  wmo_spi: ["WMO (2012). Standardized Precipitation Index User Guide, WMO-No. 1090.", "https://www.droughtmanagement.info/literature/WMO_standardized_precipitation_index_user_guide_en_2012.pdf"],
   vanwagner: ["Van Wagner, C.E. (1987). Development and structure of the Canadian Forest Fire Weather Index System. Canadian Forestry Service, Forestry Technical Report 35.", "https://bac-lac.wayback.archive-it.org/web/20061102130554/http://fire.cfs.nrcan.gc.ca/research/environment/cffdrs/fwi_e.htm"],
   nasanbat16: ["Nasanbat, E., Lkhamjav, O. (2016). Wild fire risk map in the Eastern Steppe of Mongolia using spatial multi-criteria analysis. ISPRS Archives XLI-B1, 469.", "https://doi.org/10.5194/isprsarchives-XLI-B1-469-2016"],
   nasanbat18: ["Nasanbat, E., et al. (2018). A spatial distribution map of the wildfire risk in Mongolia using decision support system. ISPRS Archives XLII-3/W4, 357.", "https://doi.org/10.5194/isprs-archives-XLII-3-W4-357-2018"],
@@ -413,12 +414,41 @@ METHODS.dzud = {
   ],
 };
 
+/** Descriptions switch only when the displayed data identify a refitted model. */
+export function effectiveMethod(key, lang, manifest) {
+  const original = METHODS[key][lang] ?? METHODS[key].mn;
+  const fitted = manifest?.score_models?.[key]?.method;
+  if (!fitted?.version?.includes('refit')) return original;
+  const c = { ...original, method: [...original.method], limits: [...original.limits], refs: [...original.refs] };
+  const mn = lang !== 'en', v = manifest?.verification?.[key];
+  if (key === 'fire') {
+    c.method[1] = mn
+      ? "Суурь эмзэг байдал: шатсан талбайн давтамж, галын цэгийн нягт, газрын бүрхэвч, өмнөх бүрэн сарын SPI-1. SPI-г тэг тунадасны хувьтай гамма тархалтаар сар, нүд бүрт тохируулж, хэвийн тархалтын квантильд хөрвүүлнэ. Тохируулга зөвхөн сургалтын онуудыг ашиглана."
+      : "Susceptibility combines burned-area frequency, fire density, land cover and the previous completed month's SPI-1. Per-cell, per-calendar-month zero-adjusted gamma fits are transformed to normal quantiles using training years only.";
+    c.method[2] = mn
+      ? "Логистик регресст FWI, эмзэг байдал, өмнөх сарын NDVI болон оны гишүүн орно. 2001–2017 оноор сургаж, 2018–2025 оноор шалгана. Оны гишүүнийг сургалтын сүүлийн оноор хязгаарлана. Ашиглалтын коэффициентыг 2001–2025 оноор дахин тохируулсан."
+      : "Logistic regression uses FWI, susceptibility, previous-month NDVI and a year term. Training is 2001–2017, testing 2018–2025. The year term is capped at the final training year; production coefficients are refitted on 2001–2025.";
+    c.limits[0] = mn ? "FWI дангаараа болон нийлмэл загварын ялгах чадварыг сонгосон талбайн «Шалгалтын тоон үзүүлэлт»-ээс харна. Шалгалтын тоо нь улсын хэмжээнд хамаарна." : "See Verification figures for measured skill. Verification is national, not a local validation of the selected area.";
+    c.limits[1] = mn ? "Давтамжийн хазайлтыг таамагласан / ажиглагдсан тохиолдлын харьцаагаар шалгана. Түүхэн суурь давтамжийн ялгаа дангаараа загварын хэтрүүлэлтийг нотлохгүй." : "Calibration is checked using predicted / observed events. A difference in historical base rates alone does not establish prediction bias.";
+    c.limits[2] = mn ? "Гал ховор тул өндөр оноо нь гал заавал гарна гэсэн үг биш. Өндөр ангид ажиглагдсан галын хувийг шалгалтын бодит үр дүнгээр харуулна." : "Fires are rare; a high score does not guarantee a fire. The measured event frequency among high scores is reported in verification.";
+    c.limits[5] = mn ? "SPI-ийн ашиглалтын суурь 25 жил, шалгалтын сургалтын суурь 17 жил. WMO-ийн зөвлөдөг 30 ба түүнээс олон жилийн хугацаанаас богино тул итгэл сул, ялангуяа хуурай саруудад. Тохируулах өгөгдөл хүрэхгүй нүд, сард хуурайшлын нэмэр хэвийн утгад орно; энэ нь хэмжсэн SPI биш." : "The production SPI reference is 25 years (17 in held-out training), shorter than WMO's preferred 30+ years. Confidence is weaker, especially in dry months. Insufficient or degenerate fits use a neutral susceptibility contribution, not an observed SPI.";
+    c.refs.push('wmo_spi');
+    c.limits.push(mn ? "Олон жилийн чиг хандлагад загварын оны гишүүний нөлөө орно. Үүнийг зөвхөн цаг уурын өөрчлөлтөөс үүссэн гэж тайлбарлахгүй." : "Long-term trends include the model's year term and cannot be attributed solely to changing weather.");
+  }
+  if (key === 'dust') {
+    c.method[2] = mn ? "Логистик регрессийг 2019–2023 оны бүх сараар сургаж, 2024–2026 оны байгаа ажиглалтаар шалгана. Сарын sin/cos гишүүн улирлыг илэрхийлнэ. 2026 оны шалгалт аравдугаар сараар дуусна; өвлийн болон бусад улирлын үр дүнг тусад нь үзүүлнэ." : "Logistic regression is trained on all months of 2019–2023 and tested on available 2024–2026 observations. Sine/cosine month terms represent seasonality. The 2026 test ends in October; seasonal verification is reported separately.";
+    c.limits[0] = mn ? `Шалгалтын AUC: ${v?.auc ?? 'тооцоогүй'}. Нийт AUC-г хаврын хуучин үзүүлэлттэй шууд харьцуулахгүй; ижил улирлын шалгалтыг хэрэглэнэ.` : `Test AUC: ${v?.auc ?? 'not computed'}. Do not compare an all-season AUC directly with the old spring-only AUC; compare the same season.`;
+    c.limits[5] = mn ? "Салхины регрессийн хугарлын цэгийг 9.8 − 0.9 × нүцгэн газрын хувь гэж туршсан. Говийн 8.9, хойд хээрийн 9.8 м/с нь Kurosaki, Mikami (2007)-ийн бүсийн утга; тэдгээрийг нүд бүрт шугаман холбосон нь манай сонголт, орон нутагт хэмжсэн босго биш." : "The experimental wind hinge is 9.8 − 0.9 × bare-ground fraction. Endpoints 8.9 and 9.8 m/s are regional values from Kurosaki & Mikami (2007); linear interpolation is our modelling choice, not a measured local threshold.";
+  }
+  return c;
+}
+
 export function openMethods(dlg, hazard, { lang, t, manifest }) {
   const list = (items) => el("ul", {}, items.map((s) => el("li", { text: s })));
   const local = (v) => (typeof v === "string" ? v : v[lang] ?? v.mn);
   /** The sections of one method: its own, or one of the parts shown under another hazard (`sub`). */
   function section(key, sub) {
-    const m = METHODS[key], c = m[lang] ?? m.mn;
+    const m = METHODS[key], c = effectiveMethod(key, lang, manifest);
     const refs = m.ownError ? c.refs : [...c.refs, "gum", "olofsson", "weatherhead"];
     const sources = !sub && manifest?.sources?.[key];
     const rows = sources ? sources.map((s) => [s.name, s.resolution, s.role]) : m.data.map(([a, b, r]) => [a, local(b), local(r)]);

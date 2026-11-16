@@ -29,6 +29,7 @@ import numpy as np
 import common as C
 import fwi_np as F
 import load as L
+import refit_features as R
 from fetch_era5 import CACHE
 
 HERE = os.path.dirname(__file__)
@@ -37,9 +38,21 @@ YEARS = list(range(2001, 2026))
 FIRE_TRAIN, FIRE_TEST = range(2001, 2018), range(2018, 2026)
 DUST_TRAIN, DUST_TEST = range(2019, 2024), range(2024, 2027)
 SNOW_CM = 1.0
-DUST_MONTHS = (3, 4, 5)
+REFIT = '--refit' in sys.argv
+DUST_MONTHS = tuple(range(1, 13)) if REFIT else (3, 4, 5)
 AAI_EVENT = 1.0
 rng = np.random.default_rng(20261106)
+
+
+def save_heldout(hazard, beta, base, verification, method, **arrays):
+    """Optional reproducibility artifacts: training-only parameters, not production fits."""
+    folder = os.environ.get('HAZARD_REPORT_DIR')
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, f'heldout_{hazard}.json'), 'w', encoding='utf-8') as out:
+            json.dump(dict(beta=beta.tolist(), base=base, verification=verification, method=method), out, indent=2)
+        if arrays:
+            np.savez_compressed(os.path.join(folder, f'heldout_{hazard}.npz'), **arrays)
 
 
 def lift_score(p, base):
@@ -168,6 +181,8 @@ def spi_class(z):
 
 def monthly_spi(train_idx):
     r = np.load(os.path.join(CACHE, "monthly_rain.npy"))
+    if REFIT:
+        return dict(rain=r, **R.gamma_fit(r[train_idx]))
     mu, sd = np.nanmean(r[train_idx], 0), np.nanstd(r[train_idx], 0)
     return r, mu, np.maximum(sd, 1.0)
 
@@ -187,7 +202,10 @@ def fire_features(y, ok, s_static, s_weight, spi, ndvi_prev_fn):
     f = np.load(os.path.join(CACHE, "fwi", f"{y}.npy")).astype(np.float32)[:len(dates)]
     fs = F.effis_score(f)[:, ok] / 100.0
     snow = e["sd"][:, ok] >= SNOW_CM
-    r, mu, sd = spi
+    if isinstance(spi, dict):
+        r = spi['rain']
+    else:
+        r, mu, sd = spi
     yi = y - 2001
     S = np.empty(fs.shape, np.float32)
     G = np.empty(fs.shape, np.float32)
@@ -196,7 +214,12 @@ def fire_features(y, ok, s_static, s_weight, spi, ndvi_prev_fn):
         i = months == m
         if not i.any():
             continue
-        z = (r[yi, m - 1] - mu[m - 1]) / sd[m - 1]
+        if isinstance(spi, dict):
+            # A completed previous month is available to the daily forecast.
+            py, pm = yi - (m == 1), (m - 2) % 12
+            z = R.gamma_spi(r[py, pm], spi['spi_shape'][pm], spi['spi_scale'][pm], spi['spi_q'][pm]) if py >= 0 else np.full(s_static.shape, np.nan)
+        else:
+            z = (r[yi, m - 1] - mu[m - 1]) / sd[m - 1]
         z = np.where(np.isfinite(z), z, 0.0)
         S[i] = ((s_static + W_SPI * spi_class(z)) / (s_weight + W_SPI))[ok] / 5.0
         G[i] = ndvi_prev_fn(y, m)[ok]
@@ -208,8 +231,11 @@ def ndvi_prev(y, m):
     return L.veg(y - (m == 1), 12 if m == 1 else m - 1)[0]
 
 
-def fire_design(fs, S, G):
-    return np.column_stack([np.ones(fs.size), fs.ravel(), S.ravel(), G.ravel(), fs.ravel() * S.ravel(), fs.ravel() * G.ravel()])
+def fire_design(fs, S, G, year=None, time_cap=2025):
+    columns = [np.ones(fs.size), fs.ravel(), S.ravel(), G.ravel(), fs.ravel() * S.ravel(), fs.ravel() * G.ravel()]
+    if year is not None:
+        columns.append(np.broadcast_to(R.time_term(year, time_cap), fs.shape).ravel())
+    return np.column_stack(columns)
 
 
 def fire_collect(years, ok, s_static, s_weight, spi, neg_rate):
@@ -218,20 +244,21 @@ def fire_collect(years, ok, s_static, s_weight, spi, neg_rate):
         dates, snow, fs, S, G = fire_features(y, ok, s_static, s_weight, spi, ndvi_prev)
         obs = L.obs_year("fire", y, dates)[:, ok]
         hit = (obs > 0) & np.isfinite(obs)
-        total_cells += hit.size
+        observed = np.isfinite(obs) if REFIT else np.ones(hit.shape, bool)
+        total_cells += int(observed.sum())
         total_pos += int(hit.sum())
         n_snow_pos += int((hit & snow).sum())
-        free = ~snow
+        free = ~snow & observed
         p = hit & free
         n = free & ~hit & (rng.random(hit.shape) < neg_rate)
-        Xp.append(np.column_stack([fs[p], S[p], G[p]]))
-        Xn.append(np.column_stack([fs[n], S[n], G[n]]))
+        Xp.append(np.column_stack([fs[p], S[p], G[p]] + ([np.full(p.sum(), y)] if REFIT else [])))
+        Xn.append(np.column_stack([fs[n], S[n], G[n]] + ([np.full(n.sum(), y)] if REFIT else [])))
         print(y, "fires", int(hit.sum()), "on snow", int((hit & snow).sum()), flush=True)
     return np.concatenate(Xp), np.concatenate(Xn), total_pos / total_cells, n_snow_pos
 
 
-def design3(a):
-    return fire_design(a[:, 0], a[:, 1], a[:, 2])
+def design3(a, time_cap=2025):
+    return fire_design(a[:, 0], a[:, 1], a[:, 2], a[:, 3] if a.shape[1] == 4 else None, time_cap)
 
 
 def fire():
@@ -247,22 +274,25 @@ def fire():
     Xall = np.vstack([Xp, Xn])
     yv = np.r_[np.ones(len(Xp)), np.zeros(len(Xn))]
     wv = np.r_[np.ones(len(Xp)), np.full(len(Xn), 1 / neg_rate)]
-    b = logistic_fit(design3(Xall), yv, wv)
+    b = logistic_fit(design3(Xall, FIRE_TRAIN[-1]), yv, wv)
     print("coefficients", b.round(3))
 
     # Held-out years. Compare against simpler models to see what each ingredient adds.
     test = {}
     hp, hn = [], []
+    checks = R.ProbabilityCheck()
     alt = dict(fwi=([], []), s=([], []))
     for y in FIRE_TEST:
         dates, snow, fs, S, G = fire_features(y, ok, S0, w0, spi, ndvi_prev)
         obs = L.obs_year("fire", y, dates)[:, ok]
         hit = (obs > 0) & np.isfinite(obs)
-        P = predict(fire_design(fs, S, G), b).reshape(fs.shape)
+        P = predict(fire_design(fs, S, G, y if REFIT else None, FIRE_TRAIN[-1]), b).reshape(fs.shape)
+        observed = np.isfinite(obs) if REFIT else np.ones(hit.shape, bool)
+        checks.add(y, np.where(snow, 0.0, P), hit, observed)
         sc = np.rint(lift_score(P, base)).astype(int)
         sc[snow] = 0
         hp.append(np.bincount(sc[hit], minlength=101))
-        hn.append(np.bincount(sc[~hit], minlength=101))
+        hn.append(np.bincount(sc[observed & ~hit], minlength=101))
         a = np.rint(fs * 100).astype(int)
         a[snow] = 0
         alt["fwi"][0].append(np.bincount(a[hit], minlength=101))
@@ -273,11 +303,15 @@ def fire():
     hp, hn = np.array(hp), np.array(hn)
     v, u_model, gaps = verify(hp, hn, base, "MODIS FIRMS")
     v["period"] = f"{FIRE_TEST[0]}-{FIRE_TEST[-1]}"
+    v.update(checks.result(base))
+    v['reliability_gaps_score'] = gaps
     v["auc_fwi_only"] = round(auc_from_hist(np.array(alt["fwi"][0]).sum(0), np.array(alt["fwi"][1]).sum(0)), 3)
     v["auc_mce_only"] = round(auc_from_hist(np.array(alt["s"][0]).sum(0), np.array(alt["s"][1]).sum(0)), 3)
     print(json.dumps(v, indent=1), "u_model", u_model, "gaps", np.round(gaps, 1))
 
     # Production: same model, refitted on every year.
+    test_spi = {k: a for k, a in spi.items() if k.startswith('spi_')} if REFIT else dict(spi_mu=spi[1], spi_sd=spi[2])
+    save_heldout('fire', b, base, v, dict(version='fire-refit-v1' if REFIT else 'legacy', time_cap=FIRE_TRAIN[-1]), S=S0, w=w0, **test_spi)
     all_idx = list(range(len(YEARS)))
     spi = monthly_spi(all_idx)
     hot = fire_counts(YEARS)
@@ -285,8 +319,10 @@ def fire():
     Xp, Xn, base1, _ = fire_collect(YEARS, ok, S1, w1, spi, neg_rate)
     Xall = np.vstack([Xp, Xn])
     b1 = logistic_fit(design3(Xall), np.r_[np.ones(len(Xp)), np.zeros(len(Xn))], np.r_[np.ones(len(Xp)), np.full(len(Xn), 1 / neg_rate)])
-    np.savez_compressed(os.path.join(HERE, "model_fire.npz"), S=S1.astype(np.float32), w=w1, spi_mu=spi[1].astype(np.float32), spi_sd=spi[2].astype(np.float32))
-    save_model("fire", dict(beta=b1.tolist(), base=base1, verification=v, u_model=u_model, beta_test_split=b.tolist()))
+    params = {k: a.astype(np.float32) for k, a in spi.items() if k.startswith('spi_')} if REFIT else dict(spi_mu=spi[1].astype(np.float32), spi_sd=spi[2].astype(np.float32))
+    np.savez_compressed(os.path.join(HERE, "model_fire.npz"), S=S1.astype(np.float32), w=w1, **params)
+    method = dict(version='fire-refit-v1', time_cap=YEARS[-1], test_time_cap=FIRE_TRAIN[-1], spi='zero-adjusted-gamma', spi_lag_months=1, spi_reference='2001-2025', spi_reference_years=25) if REFIT else dict(version='legacy')
+    save_model("fire", dict(beta=b1.tolist(), base=base1, verification=v, u_model=u_model, beta_test_split=b.tolist(), method=method))
 
 
 # -------------------------------------------------------------------- dust
@@ -309,9 +345,13 @@ def dust_features(y, ok, s):
     return d2, sd >= SNOW_CM, w, sm, np.nan_to_num(N, nan=0.1), np.nan_to_num(T, nan=1.2), np.broadcast_to(s["lc_barren"][ok], w.shape)
 
 
-def dust_design(w, sm, n, t, bare):
-    ex = np.maximum(w - 6.0, 0.0)  # 6 m/s: lowest dust-prone wind already used by this project
-    return np.column_stack([np.ones(w.size), w.ravel() / 10, ex.ravel() / 10, sm.ravel() * 5, n.ravel() * 3, t.ravel(), bare.ravel(), (ex * bare).ravel() / 10])
+def dust_design(w, sm, n, t, bare, month=None):
+    threshold = R.wind_threshold(bare) if month is not None else 6.0
+    ex = np.maximum(w - threshold, 0.0)
+    columns = [np.ones(w.size), w.ravel() / 10, ex.ravel() / 10, sm.ravel() * 5, n.ravel() * 3, t.ravel(), bare.ravel(), (ex * bare).ravel() / 10]
+    if month is not None:
+        columns += [np.broadcast_to(v, w.shape).ravel() for v in R.seasonal_terms(month)]
+    return np.column_stack(columns)
 
 
 def dust_collect(years, ok, s):
@@ -327,7 +367,8 @@ def dust_collect(years, ok, s):
         n_all += int(seen.sum())
         n_ev += int(ev.sum())
         keep = seen & ~snow & (ev | (rng.random(ev.shape) < 0.05))
-        D.append(np.column_stack([w[keep], sm[keep], N[keep], T[keep], B[keep]]))
+        month = np.broadcast_to(np.array([d.month for d in d2])[:, None], w.shape)
+        D.append(np.column_stack([w[keep], sm[keep], N[keep], T[keep], B[keep]] + ([month[keep]] if REFIT else [])))
         Y.append(ev[keep].astype(float))
         print(y, "valid", int(seen.sum()), "events", int(ev.sum()), flush=True)
     return np.concatenate(D), np.concatenate(Y), n_ev / max(n_all, 1)
@@ -340,6 +381,8 @@ def dust():
     b = logistic_fit(dust_design(*D.T), Y, wts)
     print("train rows", len(Y), "base", base, "coef", b.round(3))
     hp, hn, wind_p, wind_n = [], [], [], []
+    checks = R.ProbabilityCheck()
+    seasonal = {name: ([], []) for name in ['DJF', 'MAM', 'JJA', 'SON']}
     for y in DUST_TEST:
         f = dust_features(y, ok, s)
         if f is None:
@@ -348,22 +391,34 @@ def dust():
         a = L.aai_anomaly(y, d2)[:, ok]
         seen = np.isfinite(a)
         ev = seen & (a >= AAI_EVENT)
-        P = predict(dust_design(w, sm, N, T, B), b).reshape(w.shape)
+        month = np.broadcast_to(np.array([d.month for d in d2])[:, None], w.shape)
+        P = predict(dust_design(w, sm, N, T, B, month if REFIT else None), b).reshape(w.shape)
+        for mo in sorted(set(d.month for d in d2)):
+            checks.add(f'{y}-{mo:02d}', np.where(snow, 0.0, P), ev, seen & (month == mo))
         sc = np.rint(lift_score(P, base)).astype(int)
         sc[snow] = 0
         hp.append(np.bincount(sc[ev], minlength=101))
         hn.append(np.bincount(sc[seen & ~ev], minlength=101))
+        for name, months in [('DJF', [12, 1, 2]), ('MAM', [3, 4, 5]), ('JJA', [6, 7, 8]), ('SON', [9, 10, 11])]:
+            season = np.isin(month, months)
+            seasonal[name][0].append(np.bincount(sc[season & ev], minlength=101))
+            seasonal[name][1].append(np.bincount(sc[season & seen & ~ev], minlength=101))
         ws = np.clip(np.rint(w * 4), 0, 100).astype(int)
         wind_p.append(np.bincount(ws[ev], minlength=101))
         wind_n.append(np.bincount(ws[seen & ~ev], minlength=101))
     hp, hn = np.array(hp), np.array(hn)
     v, u_model, gaps = verify(hp, hn, base, "Sentinel-5P TROPOMI AAI anomaly ≥ 1")
-    v["period"] = f"{DUST_TEST[0]}-{DUST_TEST[-1]}, 3-5 сар"
+    v["period"] = f"{DUST_TEST[0]}-{DUST_TEST[-1]}, " + ('all available months (2026 through October)' if REFIT else '3-5 сар')
+    v.update(checks.result(base))
+    v['reliability_gaps_score'] = gaps
+    v['seasons'] = {name: dict(auc=auc_from_hist(np.array(pos).sum(0), np.array(neg).sum(0)), events=int(np.sum(pos)), valid_cell_days=int(np.sum(pos) + np.sum(neg))) for name, (pos, neg) in seasonal.items() if np.sum(pos) and np.sum(neg)}
     v["auc_wind_only"] = round(auc_from_hist(np.array(wind_p).sum(0), np.array(wind_n).sum(0)), 3)
     print(json.dumps(v, indent=1), "u_model", u_model, "gaps", np.round(gaps, 1))
+    save_heldout('dust', b, base, v, dict(version='dust-refit-v1' if REFIT else 'legacy', months=list(DUST_MONTHS)))
     D, Y, base1 = dust_collect(list(DUST_TRAIN) + list(DUST_TEST), ok, s)
     b1 = logistic_fit(dust_design(*D.T), Y, np.where(Y > 0, 1.0, 20.0))
-    save_model("dust", dict(beta=b1.tolist(), base=base1, verification=v, u_model=u_model, aai_event=AAI_EVENT))
+    method = dict(version='dust-refit-v1', months=list(DUST_MONTHS), wind_threshold='9.8 - 0.9 * bare_fraction; experimental regional interpolation') if REFIT else dict(version='legacy', months=list(DUST_MONTHS))
+    save_model("dust", dict(beta=b1.tolist(), base=base1, verification=v, u_model=u_model, aai_event=AAI_EVENT, method=method))
 
 
 # ------------------------------------------------------------------- flood

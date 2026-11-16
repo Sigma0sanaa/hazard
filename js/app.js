@@ -604,7 +604,7 @@ function renderSelection() {
   const day = fr ? dayReport({ frame: fr, uframe: uFrameNow(), cells: s.cells, grid: m.grid, classes: CLASSES, uModel: m.uncertainty?.[state.hazard]?.u_model, ratio: ratioScale(state.hazard) }) : null;
   state.panel.render({
     kind: s.kind, label: s.label, hazard: state.hazard, hazardLabel: t(state.hazard), date: state.date,
-    day, dayMissing: !fr, long: s.long, months: s.months, longError: s.longError || !m, verification: m?.verification?.[state.hazard],
+    day, dayMissing: !fr, long: s.long, months: s.months, longError: s.longError || !m, verification: m?.verification?.[state.hazard], scoreModels: m?.score_models, refitReview: m?.refit_review?.hazards?.[state.hazard],
   });
   state.downloads?.refresh();
 }

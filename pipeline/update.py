@@ -18,6 +18,7 @@ import ee
 import numpy as np
 
 import common as C
+import scores as S
 from fetch_era5 import CACHE, H
 
 PY = sys.executable
@@ -43,11 +44,17 @@ def run(*args):
 
 
 def main():
+    with open(os.path.join(HERE, '..', 'data', 'gee', 'manifest.json'), encoding='utf-8') as source:
+        S.check_history_model(json.load(source))
     C.init()
     today = dt.datetime.now(dt.timezone.utc).date()
     first = (today.replace(day=1) - dt.timedelta(days=1)).replace(day=1)   # first day of the previous month
     # Start on a chunk boundary a little earlier, for the 3-day flood sum at the start of the first month.
     fetch_from = (first - dt.timedelta(days=1)).replace(day=17)
+    fitted = json.load(open(os.path.join(HERE, 'model.json'), encoding='utf-8'))
+    if fitted.get('fire', {}).get('method', {}).get('spi_lag_months') == 1:
+        # The first recomputed month needs the ENTIRE preceding month for SPI.
+        fetch_from = fetch_from.replace(day=1)
     era_end = last_era5(today)
     end = today - dt.timedelta(days=1)
     print("recompute from", first, "| ERA5-Land to", era_end, "| to", end, flush=True)
