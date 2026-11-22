@@ -25,6 +25,7 @@ import { initFireBox } from "./aoi/firebox.js";
 import { createVegBox } from "./minedust_vegbox.js";
 import { createViewer } from "./aoi/viewer.js";
 import { createDzud } from "./dzud.js";
+import { playIntro } from "./intro.js";
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -743,6 +744,7 @@ async function boot() {
   renderScreen();
   renderDateFold();
   wire();
+  playIntro();
   state.ready = loadBasics();
   state.dateBar.setRange(FIRST_IMAGERY, utcDate(0));
   const newest = await newestImageDate(GIBS.layers.find((l) => l.key === "truecolor_terra"));
