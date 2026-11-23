@@ -69,6 +69,24 @@ def test_pressure():
     assert z[1] < z[2]  # the town has 1000 sheep units per km2 of its own, and takes its aimag's 57
 
 
+def test_chance():
+    import dzud as D
+    b = 0.124
+    assert abs(D.to_score(b, b) - 40) < 1e-9
+    assert all(abs(D.to_p(D.to_score(p, b), b) - p) < 1e-9 for p in (0.02, 0.1, 0.3))
+    assert abs(D.to_score(0.0001 * 4, 0.0001) - 60) < 0.02  # a rare event: the same score as fire and dust get
+    assert D.to_score(0.9999, b) == 100 and D.to_score(1e-9, b) == 0
+    assert abs(D.auc(np.array([1, 1, 0, 0]), np.array([4., 2., 3., 1.])) - 0.75) < 1e-9
+    assert abs(D.auc(np.array([1, 0, 1, 0]), np.ones(4)) - 0.5) < 1e-9  # ties count half
+    rng = np.random.default_rng(2)
+    x = rng.normal(size=20000)
+    y = (rng.random(20000) < 1 / (1 + np.exp(2 - 1.5 * x))).astype(float)
+    a, sl = D.fit_line(x, y)
+    assert abs(a + 2) < 0.1 and abs(sl - 1.5) < 0.1
+    a, sl = D.fit_line(-x, y)  # a date where a worse index went with fewer losses: no skill, so the average chance for all
+    assert sl == 0 and abs(1 / (1 + np.exp(-a)) - y.mean()) < 1e-9
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

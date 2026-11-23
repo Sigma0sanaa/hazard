@@ -254,10 +254,7 @@ def climate():
     soums = load_soums()
     owner, share, table = soum_of_cell(soums, cells), pasture_share(s), herds()
     years = sorted({y for (_, y), (a, _) in table.items() if a is not None})
-    press = []
-    for y in years:
-        z = np.append(pressure_by_soum(y, soums, share, table), np.nan)
-        press.append(np.where(cells, z[owner], np.nan))
+    press = press_cells(years, soums, share, table, owner, cells)
     half = lambda a: np.asarray(a, np.float32)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
@@ -266,10 +263,207 @@ def climate():
     print("written", round(os.path.getsize(GRIDS) / 1e6, 1), "MB", "censuses", years[0], years[-1])
 
 
+def press_cells(years, soums, share, table, owner, cells):
+    """Herd pressure of each census on the grid: every cell takes the value of its soum."""
+    out = []
+    for y in years:
+        z = np.append(pressure_by_soum(y, soums, share, table), np.nan)
+        out.append(np.where(cells, z[owner], np.nan))
+    return out
+
+
+def smooth(a, km):
+    """Gaussian smoothing on the grid, sigma in km. Cells outside the grid count as zero, so weights are smoothed alike."""
+    out = np.zeros_like(a)
+    n = int(np.ceil(3 * km / (111.32 * C.DY)))
+    for d in range(-n, n + 1):
+        w = np.exp(-0.5 * (d * C.DY * 111.32 / km) ** 2)
+        i = np.arange(max(0, d), min(C.NY, C.NY + d))
+        out[i] += w * a[i - d]
+    b, out = out, np.zeros_like(a)
+    for r in range(C.NY):
+        dx = C.DX * 111.32 * np.cos(np.radians(C.LAT[r]))
+        m = int(np.ceil(3 * km / dx))
+        out[r] = np.convolve(b[r], np.exp(-0.5 * (np.arange(-m, m + 1) * dx / km) ** 2), "same")
+    return out
+
+
+def pressure_smooth(year, soums, share, table, owner, cells, km):
+    """The variant of the plan: herds spread over each soum's pasture, then both smoothed, so soum borders do not show."""
+    cos = np.cos(np.radians(C.LAT))[:, None]
+    past = np.where(cells, share * KM2 * cos, 0.0)
+    town = np.array([a < SMALL_KM2 or p["aimag"] == "Ulaanbaatar" for p, a, _ in soums])
+    aimag = np.array([p["aimag"] for p, _, _ in soums])
+    stock = np.array([(table.get((i, year)) or (None, None))[0] or np.nan for i in range(len(soums))], float)
+    herd = np.zeros((C.NY, C.NX))
+    for i in np.flatnonzero(np.isfinite(stock)):
+        k = np.isin(owner, np.flatnonzero(aimag == aimag[i])) if town[i] else owner == i
+        if past[k].sum() > 0:
+            herd[k] += stock[i] * past[k] / past[k].sum()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        v = np.log(1000.0 * smooth(herd, km) / smooth(past, km))
+    v[~cells | ~np.isfinite(v)] = np.nan
+    m = np.array([np.nanmean(v.ravel()[idx]) if np.isfinite(v.ravel()[idx]).any() else np.nan for _, _, idx in soums])
+    return np.clip((v - np.nanmean(m)) / np.nanstd(m), -CLIP, CLIP)
+
+
 def grids():
     z = np.load(GRIDS)
     return {k: z[k] for k in z.files}
 
 
+# ------------------------------------------------------------------- chance
+def to_score(p, base):
+    """Powers of 4 of the odds over the average odds. For a rare event odds and chance are the same, so this is the scale
+    of fire and dust; a chance of 12 % needs the odds, or the score could not pass 70."""
+    p = np.clip(p, 1e-12, 1 - 1e-12)
+    return np.clip(20.0 * (np.log(p / (1 - p) / (base / (1 - base))) / np.log(4.0) + 2.0), 0.0, 100.0)
+
+
+def to_p(score, base):
+    o = base / (1 - base) * 4.0 ** (np.asarray(score, float) / 20.0 - 2.0)
+    return o / (1 + o)
+
+
+def auc(y, s):
+    """Area under the ROC curve, ties counted half."""
+    n1, n0 = float((y > 0).sum()), float((y <= 0).sum())
+    if not n1 or not n0:
+        return np.nan
+    u, inv, cnt = np.unique(s, return_inverse=True, return_counts=True)
+    rank = np.cumsum(cnt) - (cnt - 1) / 2.0
+    return float((rank[inv][y > 0].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+
+
+def fit_line(x, y):
+    """(a, b) of chance = 1 / (1 + exp(-(a + b x))). A slope below 0 is a date without skill: b = 0, the average chance."""
+    import calibrate as K
+    a, b = K.logistic_fit(np.column_stack([np.ones(len(x)), x]), y, np.ones(len(x)), ridge=1e-6)
+    if b <= 0:
+        return float(np.log(y.mean() / (1 - y.mean()))), 0.0
+    return float(a), float(b)
+
+
+def soum_index(g, soums, winters, press):
+    """Index at every node as the mean over the cells of each soum, which is what the map shows: [winter, node, soum]."""
+    out = np.full((len(winters), len(NODES), len(soums)), np.nan)
+    for w, winter in enumerate(winters):
+        n = summer_ndvi(winter)
+        fixed = (press[w], summer_z(n, g))
+        acc = Acc()
+        for d, t, sd in season_days(winter):
+            acc.add(t, sd)
+            k = season_day(d)
+            if k in NODES:
+                v = index(*weather_z(acc, k, g), *fixed).ravel()
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    out[w, NODES.index(k)] = [np.nanmean(v[idx]) for _, _, idx in soums]
+    return out
+
+
+def losses(soums, winters):
+    """Share of the herd of December of the winter lost in the next calendar year, as the NSO counts it."""
+    h = herds()
+    out = np.full((len(winters), len(soums)), np.nan)
+    for w, y in enumerate(winters):
+        for i in range(len(soums)):
+            stock, loss = (h.get((i, y)) or (None, None))[0], (h.get((i, y + 1)) or (None, None))[1]
+            if stock and loss is not None:
+                out[w, i] = loss / stock
+    return out
+
+
+def held_out(X, Y):
+    """Chance of every soum-winter from a line fitted on the other winters, and the rate of those winters: [winter, soum]."""
+    p, clim = np.full(Y.shape, np.nan), np.full(Y.shape, np.nan)
+    ok = np.isfinite(X) & np.isfinite(Y)
+    for w in range(len(Y)):
+        tr = ok.copy()
+        tr[w] = False
+        y = (Y[tr] >= EVENT).astype(float)
+        a, b = fit_line(X[tr], y)
+        p[w] = np.where(ok[w], 1 / (1 + np.exp(-(a + b * X[w]))), np.nan)
+        clim[w] = np.where(ok[w], y.mean(), np.nan)
+    return p, clim
+
+
+def skill(p, clim, Y):
+    ok = np.isfinite(p)
+    y = (Y[ok] >= EVENT).astype(float)
+    within = [auc((Y[w][ok[w]] >= EVENT) * 1.0, p[w][ok[w]]) for w in range(len(Y)) if (Y[w][ok[w]] >= EVENT).sum() >= 5]
+    brier = float(((p[ok] - y) ** 2).mean())
+    return dict(n=int(y.sum()), soum_winters=int(ok.sum()), auc=round(auc(y, p[ok]), 3), auc_within=round(float(np.nanmean(within)), 3),
+                brier=round(brier, 4), bss=round(1 - brier / float(((clim[ok] - y) ** 2).mean()), 3))
+
+
+def calibrate():
+    import calibrate as K
+    g, soums = grids(), load_soums()
+    winters = list(range(2011, 2025))
+    Y = losses(soums, winters)
+    base = float((Y[np.isfinite(Y)] >= EVENT).mean())
+    # The variant with smoothed herds is kept only if the check of 31 January is not worse (rule fixed in the plan).
+    s = L.static()
+    cells = s["mask"] > 0.02
+    owner, share, table = soum_of_cell(soums, cells), pasture_share(s), herds()
+    years = [int(v) for v in g["p_years"]]
+    by_soum = press_cells(years, soums, share, table, owner, cells)  # afresh: model_dzud.npz may hold the variant already
+    X = soum_index(g, soums, winters, [by_soum[years.index(y - 1)] for y in winters])
+    Xs = soum_index(g, soums, winters, [pressure_smooth(y - 1, soums, share, table, owner, cells, 25.0) for y in winters])
+    jan = NODES.index(91)
+    plain, smoothed = [skill(*held_out(x[:, jan], Y), Y) for x in (X, Xs)]
+    print("31 January, herds by soum", plain, "| smoothed 25 km", smoothed, flush=True)
+    use = smoothed["auc"] >= plain["auc"]
+    if use:
+        X = Xs
+    g["press"] = np.asarray([pressure_smooth(y, soums, share, table, owner, cells, 25.0) for y in years] if use else by_soum, np.float32)
+    np.savez_compressed(GRIDS, **g)
+
+    a, b, by_node, P, Cl = [], [], {}, [], []
+    for k, day in enumerate(NODES):
+        ok = np.isfinite(X[:, k]) & np.isfinite(Y)
+        ak, bk = fit_line(X[:, k][ok], (Y[ok] >= EVENT).astype(float))
+        a.append(ak), b.append(bk)
+        p, cl = held_out(X[:, k], Y)
+        P.append(p), Cl.append(cl)
+        date = dt.date(2022, 11, 1) + dt.timedelta(days=day)
+        by_node[f"{date:%m-%d}"] = dict(a=round(ak, 4), b=round(bk, 4), **skill(p, cl, Y))
+        print(f"{date:%m-%d}", by_node[f"{date:%m-%d}"], flush=True)
+
+    # Whole season from 15 November, every node counted: what a reader meets on a day picked at random.
+    P, Cl, YY = np.array(P[1:]), np.array(Cl[1:]), np.broadcast_to(Y, (len(NODES) - 1, *Y.shape))
+    ok = np.isfinite(P)
+    y, sc = (YY >= EVENT) & ok, to_score(P, base)
+    boot, rng = [], np.random.default_rng(20261124)
+    for _ in range(1000):
+        w = rng.integers(0, len(winters), len(winters))
+        boot.append(auc((y[:, w][ok[:, w]]) * 1.0, P[:, w][ok[:, w]]))
+    high = ok & (sc >= 60)
+    hits, misses, false = (y & high).sum(), (y & ~high).sum(), (high & ~y).sum()
+    rel, gaps = [], []
+    for lo in range(0, 100, 10):
+        i = ok & (sc >= lo) & (sc < lo + 10 + (lo == 90))
+        n, e = int(i.sum()), int((y & i).sum())
+        if n:
+            rel.append(dict(score=lo, n=n, rate=round(e / n, 3), expected=round(float(P[i].mean()), 3)))
+        if e >= 20:
+            gaps.append(float(to_score(e / n, base) - sc[i].mean()))
+    jan_p = P[jan - 1]
+    by_winter = []
+    for w, yr in enumerate(winters):
+        i = np.isfinite(jan_p[w])
+        by_winter.append(dict(winter=f"{yr}/{(yr + 1) % 100:02d}", lost=round(float((Y[w][i] >= EVENT).mean()), 3), expected=round(float(jan_p[w][i].mean()), 3),
+                              flagged=round(float((to_score(jan_p[w][i], base) >= 60).mean()), 3), auc=round(auc((Y[w][i] >= EVENT) * 1.0, jan_p[w][i]), 3) if (Y[w][i] >= EVENT).sum() >= 5 else None))
+    flat = skill(P.reshape(-1, Y.shape[1]), Cl.reshape(-1, Y.shape[1]), YY.reshape(-1, Y.shape[1]))
+    v = dict(reference="NSO adult livestock losses >= 6 % by soum", period="2011/12-2024/25, each winter left out", n=by_node["01-31"]["n"], auc=round(auc(y[ok] * 1.0, P[ok]), 3),
+             auc_ci=[round(float(q), 3) for q in np.nanpercentile(boot, [2.5, 97.5])], pod=round(float(hits / (hits + misses)), 3), far=round(float(false / max(hits + false, 1)), 3),
+             csi=round(float(hits / (hits + misses + false)), 3), brier=flat["brier"], bss=flat["bss"], share_flagged=round(float(high.sum() / ok.sum()), 4))
+    out = dict(weights=WEIGHTS, event=EVENT, nodes=list(NODES), a=a, b=b, base=base, smoothed_km=25 if use else 0, verification=v, u_model=float(np.sqrt(np.mean(np.square(gaps)))),
+               by_node=by_node, by_winter_jan31=by_winter, reliability=rel)
+    K.save_model("dzud", out)
+    print(json.dumps(dict(base=base, verification=v, u_model=out["u_model"], gaps=[round(x, 1) for x in gaps], reliability=rel, by_winter=by_winter), indent=1))
+
+
 if __name__ == "__main__":
-    dict(climate=climate)[sys.argv[1]]()
+    dict(climate=climate, calibrate=calibrate)[sys.argv[1]]()
