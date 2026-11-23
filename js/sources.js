@@ -12,6 +12,8 @@ export const SOURCES = [
   { text: "Pekel, J.-F., et al. (2016). High-resolution mapping of global surface water and its long-term changes. Nature 540, 418–422 (JRC Global Surface Water).", url: "https://doi.org/10.1038/nature20584" },
   { text: "Zanaga, D., et al. (2022). ESA WorldCover 10 m 2021 v200 (CC BY 4.0).", url: "https://doi.org/10.5281/zenodo.7254221" },
   { text: "Yamazaki, D., et al. (2019). MERIT Hydro. Water Resources Research 55; Tellman, B., et al. (2021). Global Flood Database. Nature 596.", url: "https://doi.org/10.1038/s41586-021-03695-w" },
+  { text: "National Statistics Office of Mongolia (data.1212.mn): livestock and losses of adult animals by soum.", url: "https://data.1212.mn/" },
+  { text: "Nandintsetseg, B., et al. (2018). Cold-season disasters on the Eurasian steppes: climate-driven or man-made. Scientific Reports 8, 14769 (dzud weights).", url: "https://doi.org/10.1038/s41598-018-33046-1" },
   { text: "Runfola, D., et al. (2020). geoBoundaries (NSO Mongolia, OCHA ROAP), CC BY 3.0 IGO.", url: "https://www.geoboundaries.org/" },
   { text: "Key, C.H., Benson, N.C. (2006). Landscape Assessment: Ground measure of severity, the Composite Burn Index; and remote sensing of severity, the Normalized Burn Ratio. FIREMON, USDA Forest Service RMRS-GTR-164-CD.", url: "https://research.fs.usda.gov/treesearch/24066" },
   { text: "Giglio, L., et al. (2018). The Collection 6 MODIS burned area mapping algorithm and product (MCD64A1). Remote Sensing of Environment 217, 72–85.", url: "https://doi.org/10.1016/j.rse.2018.08.005" },

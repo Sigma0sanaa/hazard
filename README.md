@@ -4,7 +4,7 @@
 
 © 2026 А.Ариунсанаа (Ariunsanaa A.). Код: MIT лиценз ([LICENSE](LICENSE)); `gee_app/` GPL-2.0. / Code: MIT licence; `gee_app/` GPL-2.0.
 
-Монгол улс даяар үер, түймэр, шороон шуурганы эрсдэлийг 2001 оноос өнөөг хүртэл өдөр бүрээр 0.1° торон дээр харуулна. Тооцоог Google Earth Engine-ийн олон хиймэл дагуулын өгөгдлөөр хийсэн. Зүүн товчоор чирж талбай сонгоход олон жилийн статистик, алдааны боломжит утга гарна. Эрсдэл бүрийн «i» товч арга зүй, материалыг нээнэ. / Daily flood, wildfire and dust risk zones for all of Mongolia since 2001 from Earth Engine. Drag with the left button for long-term statistics and possible error.
+Монгол улс даяар үер, түймэр, шороон шуурга, зудын (11–3 сар) эрсдэлийг 2001 оноос өнөөг хүртэл өдөр бүрээр 0.1° торон дээр харуулна. Тооцоог Google Earth Engine-ийн олон хиймэл дагуулын өгөгдлөөр хийсэн. Зүүн товчоор чирж талбай сонгоход олон жилийн статистик, алдааны боломжит утга гарна. Эрсдэл бүрийн «i» товч арга зүй, материалыг нээнэ. / Daily flood, wildfire, dust and (November to March) dzud risk zones for all of Mongolia since 2001 from Earth Engine. Drag with the left button for long-term statistics and possible error.
 
 * Өгөгдлийн хэлбэр, тооцооны алхам / Data format and pipeline: [docs/GEE_DATA_FORMAT.md](docs/GEE_DATA_FORMAT.md)
 * Автомат шинэчлэлт асаах / Turn on the daily update: [docs/GEE_SETUP.md](docs/GEE_SETUP.md)
