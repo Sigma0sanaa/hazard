@@ -2,6 +2,7 @@
  * Anything not computed is written as such, never left to look like a real number. */
 import { el, svg } from "./dom.js";
 import { fin } from "./stats.js";
+import { periodLabel } from "./area.js";
 import { drift, meaning, percent, times, SCORE_MODEL, FLOOD_TRUST_YEARS } from "./meaning.js";
 
 const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
@@ -19,7 +20,7 @@ const niceTicks = (lo, hi, n = 4) => {
   return out;
 };
 
-function chart({ months, years, trend, date, t }) {
+function chart({ months, years, trend, date, t, season = null }) {
   const W = 600, H = 200, L = 34, R = 10, T = 10, B = 22;
   const valid = months.filter((m) => fin(m.v));
   if (valid.length < 2) return null;
@@ -66,7 +67,7 @@ function chart({ months, years, trend, date, t }) {
     cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
     dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("visibility", "visible");
     tip.hidden = false;
-    tip.replaceChildren(el("b", { text: `${r.y}: ${f(r.v)}` }), el("span", { text: ` ${t("points")}` }));
+    tip.replaceChildren(el("b", { text: `${periodLabel(r.y, season)}: ${f(r.v)}` }), el("span", { text: ` ${t("points")}` }));
     tip.style.left = `${Math.min(x / W * 100, 72)}%`;
   };
   const hide = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.hidden = true; };
@@ -110,30 +111,45 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
       const far = s.verification?.far;
       if (fin(far)) kids.push(el("p", { class: "st-note", text: fill(t("say_fire_rare"), { k: Math.max(1, Math.round(1000 * (1 - far))) }) }));
     }
+    if (m.kind === "odds") kids.push(el("p", { class: "st-say", text: fill(t(m.beyond ? "say_dzud_beyond" : "say_dzud"), { p: m.beyond ? SCORE_MODEL.dzud.said : `${m.floor ? "≤" : "≈"}${percent(m.p)}`, base: percent(SCORE_MODEL.dzud.base), dir: dir(m.ratio, m.floor) }) }));
     if (m.kind === "flood") kids.push(el("p", { class: "st-say", text: m.years < 2 ? t("say_flood_usual") : m.beyond ? fill(t("say_flood_beyond"), { y: FLOOD_TRUST_YEARS }) : fill(t("say_flood"), { y: Math.round(m.years) }) }));
     if (m.kind === "all") kids.push(el("p", { class: "st-say", text: t("say_all") }));
     if (d.budget) {
       const range = m.kind === "lift" && s.hazard === "dust" ? fill(t("range_p"), { a: percent(m.pLo), b: percent(m.pHi) })
+        : m.kind === "odds" ? (m.pLo < SCORE_MODEL.dzud.trust ? fill(t("range_p"), { a: percent(m.pLo), b: `${percent(m.pHi)}${m.hiBeyond ? "+" : ""}` }) : "")
         : m.kind === "lift" ? fill(t("range_r"), { a: dir(m.ratioLo, m.floorLo), b: dir(m.ratioHi, m.ceilingHi) })
           : m.kind === "flood" && m.yearsHi >= 2 ? fill(t("range_y"), { a: Math.max(1, Math.round(m.yearsLo)), b: m.yearsHi > FLOOD_TRUST_YEARS ? `${FLOOD_TRUST_YEARS}+` : Math.round(m.yearsHi) }) : "";
       const span = lo === hi ? fill(t("err_same"), { a: name(lo) }) : fill(t("err_span"), { a: name(lo), b: name(hi) });
       kids.push(el("p", { class: "st-say err" + (lo === hi ? "" : " wide"), text: `${span}${range ? " " + range : ""}` }));
     }
+    if (m.early) kids.push(el("p", { class: "st-note warn", text: t("early_dzud") }));
     if (m.offSeason) kids.push(el("p", { class: "st-note warn", text: fill(t("off_season_dust"), { m: s.date.slice(5, 7).replace(/^0/, "") }) }));
     kids.push(el("details", { class: "st-help" },
       el("summary", { text: `${t("score_line").replace("{v}", f(d.mean, 0)).replace("{u}", d.budget ? `± ${atLeast(d.budget)}${f(d.budget.U, 0)}` : "")} · ${t("what_score")}` }),
-      el("p", { text: t(m.kind === "lift" ? "help_lift" : m.kind === "flood" ? "help_flood" : "help_all") })));
+      el("p", { text: t(m.kind === "lift" ? "help_lift" : m.kind === "odds" ? "help_odds" : m.kind === "flood" ? "help_flood" : "help_all") })));
     return kids;
+  }
+
+  /** What the dzud score comes from: one bar per indicator, to the right when it raises the risk, to the left when it lowers it. */
+  function partsBlock(parts, color) {
+    const top = Math.max(...parts.map((p) => Math.abs(p.part)), 0.3);
+    return [el("div", { class: "st-kicker sub", text: t("dz_why") }),
+      el("div", { class: "dz-why" }, parts.map((p) => el("div", { class: "dz-bar", title: `z ${signed(p.z)}`, role: "img", "aria-label": `${t("dz_" + p.key)}: ${t(p.part >= 0 ? "dz_up" : "dz_down")} (z ${signed(p.z)})` },
+        el("span", { text: t("dz_" + p.key) }),
+        el("i", {}, el("b", { class: p.part >= 0 ? "up" : "down", style: `width:${50 * Math.abs(p.part) / top}%;${p.part >= 0 ? `background:${color}` : ""}` })),
+        el("em", { text: signed(p.part) })))),
+      el("p", { class: "st-note", text: t("dz_why_note") })];
   }
 
   function dayBlock(s) {
     const d = s.day, classes = classesNow(), kids = [el("div", { class: "st-kicker", text: `${t("k_day")} · ${s.date}` })];
-    if (!d) { kids.push(el("p", { class: "st-note", text: s.dayMissing ? t("no_day").replace("{d}", s.date) : t("no_cells") })); return kids; }
+    if (!d) { kids.push(el("p", { class: "st-note", text: s.dayMissing ? s.dayMissingText : t("no_cells") })); return kids; }
     const cls = classes.find((c) => d.mean < c.max);
     // If the error bar crosses a class limit the class itself is uncertain, so both ends are named.
     const at = (v) => classes.find((c) => Math.min(Math.max(v, 0), 100) < c.max);
     const lo = d.budget ? at(d.mean - d.budget.U) : cls, hi = d.budget ? at(d.mean + d.budget.U) : cls;
     kids.push(...summary(s, d, cls, lo, hi));
+    if (s.parts) kids.push(...partsBlock(s.parts, cls.color));
     kids.push(el("div", { class: "st-kicker sub", text: t("seg_title") }));
     const segs = classes.map((c, i) => ({ c, s: d.share[i] })).filter((x) => x.s > 0);
     kids.push(el("div", { class: "seg", role: "img", "aria-label": segs.map((x) => `${classLabel(x.c.key)} ${Math.round(x.s * 100)}%`).join(", ") },
@@ -161,8 +177,8 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (!s.long) { kids.push(el("p", { class: "st-note", text: t("busy") })); return kids; }
     const r = s.long.trend;
     if (r) kids.push(el("div", { class: "st-sub" }, el("b", { text: signed(r.slopeDecade) }), el("span", { text: `${t("per_decade")} · ${t("mean")} ${f(r.mean)}` })));
-    const c = chart({ months: s.months, years: s.long.years, trend: r, date: s.date, t });
-    if (c) kids.push(c, el("div", { class: "keys" }, key("k-month", t("legend_month")), key("k-year", t("legend_year")), key("k-trend", t("legend_trend")), key("k-ci", t("legend_ci"))));
+    const c = chart({ months: s.months, years: s.long.years, trend: r, date: s.date, t, season: s.season });
+    if (c) kids.push(c, el("div", { class: "keys" }, key("k-month", t("legend_month")), key("k-year", t(s.season ? "legend_winter" : "legend_year")), key("k-trend", t("legend_trend")), key("k-ci", t("legend_ci"))));
     if (!r) { kids.push(el("p", { class: "st-note", text: t("too_short") })); return kids; }
     const det = r.detectYear === null ? "—" : `${r.detectYear} (${r.detectEarly ?? "—"}–${r.detectLate ?? t("may_never")})`;
     // in words: a trend counts only when it stands after the year-to-year memory is taken into account (the stricter of the two tests)
@@ -176,7 +192,7 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
       row(t("phi_row"), `${f(r.phi, 2)} · ±${f(r.detectableDecade, 2)} · ${r.nStar === null ? "—" : Math.ceil(r.nStar)}`),
       row(t("detect_year"), det),
       row(t("mk_row"), `${pv(r.mk?.p)} · ${signed(r.senDecade)}`))));
-    if (s.long.years.some((y) => !fin(y.v))) kids.push(el("p", { class: "st-note", text: t("partial") }));
+    if (s.long.years.some((y) => !fin(y.v))) kids.push(el("p", { class: "st-note", text: t(s.season ? "partial_winter" : "partial") }));
     return kids;
   }
 
@@ -184,8 +200,8 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (!s.long) return [];
     const L = s.long;
     return [el("div", { class: "st-kicker", text: t("k_years") }), el("dl", { class: "st-rows" },
-      row(t("high_days"), f(L.highMean)),
-      row(t("high_worst"), L.highWorst && L.highWorst.v > 0 ? `${L.highWorst.y} · ${f(L.highWorst.v)}` : "—"),
+      row(t(s.season ? "high_days_winter" : "high_days"), f(L.highMean)),
+      row(t("high_worst"), L.highWorst && L.highWorst.v > 0 ? `${periodLabel(L.highWorst.y, s.season)} · ${f(L.highWorst.v)}` : "—"),
       row(t("rl_row"), L.rl ? `${f(L.rl.t5)} / ${f(L.rl.t20)}` : t("too_short")))];
   }
 
@@ -193,7 +209,8 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     const kids = [el("div", { class: "st-kicker", text: t("k_verify") })], v = s.verification;
     if (s.hazard === "all") { kids.push(el("p", { class: "st-note", text: t("v_all") })); return kids; }
     if (!v) { kids.push(el("p", { class: "st-note warn", text: t("v_none") })); return kids; }
-    if (fin(v.far) && fin(v.pod)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain"), { k: Math.max(1, Math.round(1000 * (1 - v.far))), pod: Math.round(100 * v.pod), period: v.period ?? "" }) }));
+    if (s.hazard === "dzud" && fin(v.far)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain_dzud"), { k: Math.round(100 * (1 - v.far)), pod: Math.round(100 * v.pod) }) }));
+    else if (fin(v.far) && fin(v.pod)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain"), { k: Math.max(1, Math.round(1000 * (1 - v.far))), pod: Math.round(100 * v.pod), period: v.period ?? "" }) }));
     else if (fin(v.events_hit)) kids.push(el("p", { class: "st-say", text: fill(t("v_plain_flood"), { hit: v.events_hit, n: v.n }) }));
     // a known one-sided bias is said as such, not left inside a symmetric error
     const dr = drift(s.hazard);
@@ -212,8 +229,8 @@ export function createStatsPanel(root, { t, classes: classesNow, classLabel, onC
     if (!s.long) return null;
     const days = new Map(s.long.high.map((r) => [r.y, r.v]));
     return el("details", { class: "st-table" }, el("summary", { text: t("table_view") }),
-      el("table", {}, el("thead", {}, el("tr", {}, ["t_year", "t_mean", "t_days"].map((k) => el("th", { text: t(k) })))),
-        el("tbody", {}, s.long.years.map((r) => el("tr", {}, el("td", { text: String(r.y) }), el("td", { text: f(r.v) }), el("td", { text: f(days.get(r.y)) }))))));
+      el("table", {}, el("thead", {}, el("tr", {}, [s.season ? "t_winter" : "t_year", "t_mean", "t_days"].map((k) => el("th", { text: t(k) })))),
+        el("tbody", {}, s.long.years.map((r) => el("tr", {}, el("td", { text: periodLabel(r.y, s.season) }), el("td", { text: f(r.v) }), el("td", { text: f(days.get(r.y)) }))))));
   }
 
   // the panel holds the result of the selected area and, apart from it, sections that other tools put in (the mine

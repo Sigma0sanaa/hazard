@@ -163,7 +163,7 @@ export function cellRows({ grid, cells, frame, uframe, uModel, decode, classOf, 
     if (v === null) continue;
     const u = uframe ? decode(uframe[i]) : null;
     const parts = [u, uModel].filter((x) => x !== null && x !== undefined);
-    rows.push({ r, c, lat: +(grid.north - (r + 0.5) * grid.dy).toFixed(2), lon: +(grid.west + (c + 0.5) * grid.dx).toFixed(2), score: +v.toFixed(1), label: label(classOf(v).key),
+    rows.push({ r, c, i, lat: +(grid.north - (r + 0.5) * grid.dy).toFixed(2), lon: +(grid.west + (c + 0.5) * grid.dx).toFixed(2), score: +v.toFixed(1), label: label(classOf(v).key),
       u_input: u === null ? null : +u.toFixed(1), u_model: uModel ?? null, U95: parts.length ? +(2 * Math.hypot(...parts)).toFixed(1) : null, U95_min: parts.length < 2 });
   }
   return rows;

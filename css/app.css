@@ -184,6 +184,14 @@ button { cursor: pointer; }
 .st-note.warn { color: var(--warn); }
 .seg { display: flex; gap: 2px; height: 8px; margin-top: 8px; }
 .seg i { display: block; min-width: 2px; border-radius: 2px; }
+.dz-why { display: grid; gap: 4px; margin-top: 6px; }
+.dz-bar { display: grid; grid-template-columns: 118px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; }
+.dz-bar i { position: relative; height: 8px; border-radius: 4px; background: var(--line2); }
+.dz-bar i::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--ink2); }
+.dz-bar b { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.dz-bar b.up { left: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
+.dz-bar b.down { right: 50%; background: #8fbdf2; }
+.dz-bar em { font: 500 11px var(--mono); text-align: right; color: var(--ink2); font-style: normal; }
 .seg-key { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 5px; font-size: 11px; color: var(--ink2); }
 .seg-key span { display: inline-flex; align-items: center; gap: 4px; }
 .seg-key i { width: 9px; height: 9px; border-radius: 2px; }

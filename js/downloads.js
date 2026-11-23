@@ -7,7 +7,8 @@
 import { CLASSES, GIBS } from "./config.js";
 import { decode } from "./dataset.js";
 import { boxCells } from "./stats.js";
-import { dayReport, ratioScale } from "./area.js";
+import { chanceScale, dayReport, periodLabel } from "./area.js";
+import { DZUD_FIELDS, dzudFields } from "./dzud.js";
 import { el } from "./dom.js";
 import { periodStart, versionAt } from "./gibs.js";
 import { addDays } from "./datebar.js";
@@ -31,6 +32,11 @@ const single = async (name, data) => ({ base: name.replace(/\.([^.]+)$/, "_$1"),
 /** Error as a share of the score. Near zero the share says nothing, so it stays empty. */
 const relative = (u, score) => (typeof u === "number" && score >= 1 ? Math.round((u / score) * 100) : null);
 
+/** Dzud adds its chance and the four indicators to the columns of the other hazards. */
+const isDzud = (state) => state.hazard === "dzud";
+const soumFields = (state) => (isDzud(state) ? [...SOUM_FIELDS, ...DZUD_FIELDS] : SOUM_FIELDS);
+const numeric = new Set([...SOUM_FIELDS, ...DZUD_FIELDS].filter((f) => f.type === "N").map((f) => f.name));
+
 export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, classLabel, classes, soumsReady, borders, busy, detailLayers = () => [] }) {
   const detailFiles = initDetailFiles({ t });
   const fill = (k, o) => Object.entries(o).reduce((a, [x, y]) => a.replace(`{${x}}`, y), t(k));
@@ -47,7 +53,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
     if (!m || !fr) return { view, plume, s: null };
     const cells = s?.cells?.length ? s.cells : boxCells(m.grid, view);
     const uModel = m.uncertainty?.[state.hazard]?.u_model ?? null;
-    const day = dayReport({ frame: fr, uframe: uFrameNow(), cells, grid: m.grid, classes: CLASSES, uModel, ratio: ratioScale(state.hazard) });
+    const day = dayReport({ frame: fr, uframe: uFrameNow(), cells, grid: m.grid, classes: CLASSES, uModel, scale: chanceScale(state.hazard) });
     return day ? { m, fr, s, cells, uModel, day, view, plume } : { view, plume, s: null };
   }
 
@@ -60,6 +66,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
       area_km2: Math.round(d.area), mean_score: round(d.mean), risk_class: CLASSES.find((k) => d.mean < k.max).key, max_score: round(d.max),
       U95_points: round(b.U), U95_is_lower_bound: b.missing.length ? "yes" : "no", confidence: "95 percent, k=2 (JCGM 100)", error_pct_of_scale: Math.round(b.U), error_pct_of_mean: relative(b.U, d.mean),
       u_input: round(b.parts.input), u_model: round(b.parts.model), u_sampling: round(b.parts.sampling),
+      ...(isDzud(state) ? dzudFields(d.mean, c.cells, state.day) : {}),
       verification_auc: round(v?.auc, 2), verification_period: v?.period ?? null, data_version: c.m.generated_at, grid_deg: c.m.grid.dx,
       sources: "Google Earth Engine, NASA GIBS", note: "Not an official warning. The score is a relative index, not a probability.",
     };
@@ -178,8 +185,9 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
   }
 
   const CELL_HEAD = ["lat", "lon", "hazard", "obs_date", "score", "risk_cls", "u_input", "u_model", "U95", "err_pct", "U95_lb", "area_mean", "area_U95"];
-  const cellValues = (c, r) => ({ hazard: state.hazard, obs_date: state.date, score: r.score, risk_cls: r.label, u_input: r.u_input, u_model: r.u_model, U95: r.U95, err_pct: relative(r.U95, r.score), U95_lb: r.U95_min ? "Y" : "N", area_mean: round(c.day.mean), area_U95: round(c.day.budget.U) });
-  const asCellsCsv = (c) => single(`${fileBase(c)}_cells.csv`, csv(CELL_HEAD, rowsOf(c).map((r) => { const v = { lat: r.lat, lon: r.lon, ...cellValues(c, r) }; return CELL_HEAD.map((k) => v[k]); })));
+  const cellValues = (c, r) => ({ hazard: state.hazard, obs_date: state.date, score: r.score, risk_cls: r.label, u_input: r.u_input, u_model: r.u_model, U95: r.U95, err_pct: relative(r.U95, r.score), U95_lb: r.U95_min ? "Y" : "N", area_mean: round(c.day.mean), area_U95: round(c.day.budget.U), ...(isDzud(state) ? dzudFields(r.score, [{ i: r.i, w: 1 }], state.day) : {}) });
+  const cellHead = () => (isDzud(state) ? [...CELL_HEAD, ...DZUD_FIELDS.map((f) => f.name)] : CELL_HEAD);
+  const asCellsCsv = (c) => single(`${fileBase(c)}_cells.csv`, csv(cellHead(), rowsOf(c).map((r) => { const v = { lat: r.lat, lon: r.lon, ...cellValues(c, r) }; return cellHead().map((k) => v[k]); })));
   const asCellsGeoJson = (c) => single(`${fileBase(c)}_cells.geojson`, featureCollection(rowsOf(c).map((r) => pointFeature(r.lon, r.lat, cellValues(c, r))), facts(c)));
 
   /* --------------------------------------------------------------- soums */
@@ -189,12 +197,12 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
     if (!soums) throw new Error(t("soum_none"));
     const inside = c.s ? new Set(c.s.cells.map((x) => x.i)) : null;
     return soums.features.filter((f) => !inside || f.cells.some((x) => inside.has(x.i))).map((f) => {
-      const d = dayReport({ frame: c.fr, uframe: uFrameNow(), cells: f.cells, grid: c.m.grid, classes: CLASSES, uModel: c.uModel, ratio: ratioScale(state.hazard) });
-      return { geometry: f.geometry, color: d ? classOf(d.mean).color : "#555555", values: { soum_mn: f.names.mn, aimag_mn: f.aimags.mn, soum_en: f.names.en, aimag_en: f.aimags.en, hazard: state.hazard, obs_date: state.date, score: d ? round(d.mean) : null, risk_cls: d ? classLabel(classOf(d.mean).key) : "", U95: d ? round(d.budget.U) : null, err_pct: d ? relative(d.budget.U, d.mean) : null, U95_lb: d?.budget.missing.length ? "Y" : "N" } };
+      const d = dayReport({ frame: c.fr, uframe: uFrameNow(), cells: f.cells, grid: c.m.grid, classes: CLASSES, uModel: c.uModel, scale: chanceScale(state.hazard) });
+      return { geometry: f.geometry, color: d ? classOf(d.mean).color : "#555555", values: { soum_mn: f.names.mn, aimag_mn: f.aimags.mn, soum_en: f.names.en, aimag_en: f.aimags.en, hazard: state.hazard, obs_date: state.date, score: d ? round(d.mean) : null, risk_cls: d ? classLabel(classOf(d.mean).key) : "", U95: d ? round(d.budget.U) : null, err_pct: d ? relative(d.budget.U, d.mean) : null, U95_lb: d?.budget.missing.length ? "Y" : "N", ...(isDzud(state) ? dzudFields(d ? d.mean : null, f.cells, state.day) : {}) } };
     });
   }
   const soumName = (c) => `${fileBase(c)}_soums`;
-  const asSoumCsv = async (c) => { const r = await soumRows(c), k = SOUM_FIELDS.map((f) => f.name); return single(`${soumName(c)}.csv`, csv(k, r.map((x) => k.map((n) => x.values[n])))); };
+  const asSoumCsv = async (c) => { const r = await soumRows(c), k = soumFields(state).map((f) => f.name); return single(`${soumName(c)}.csv`, csv(k, r.map((x) => k.map((n) => x.values[n])))); };
   const asSoumGeoJson = async (c) => single(`${soumName(c)}.geojson`, featureCollection((await soumRows(c)).map((x) => ({ type: "Feature", geometry: x.geometry, properties: x.values })), facts(c)));
   async function asSoumKml(c) {
     const r = await soumRows(c), v = (x) => x.values;
@@ -202,8 +210,8 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
   }
   async function asSoumShp(c) {
     // A shapefile has no empty number: GIS reads a blank as 0, which would look like no error, so a missing value gets the mark of the rasters.
-    const mark = (v) => v ?? -9999, rows = (await soumRows(c)).map((x) => ({ ...x, values: { ...x.values, score: mark(x.values.score), U95: mark(x.values.U95), err_pct: mark(x.values.err_pct) } }));
-    const name = soumName(c), s = shapefile({ features: rows, fields: SOUM_FIELDS });
+    const mark = (v) => v ?? -9999, rows = (await soumRows(c)).map((x) => ({ ...x, values: Object.fromEntries(Object.entries(x.values).map(([n, v]) => [n, numeric.has(n) ? mark(v) : v])) }));
+    const name = soumName(c), s = shapefile({ features: rows, fields: soumFields(state) });
     const parts = ["shp", "shx", "dbf", "prj", "cpg"].map((x) => ({ name: `${name}.${x}`, data: s[x] }));
     return { base: `${name}_shp`, files: [...parts, await entry(`${name}.shp.xml`, sidecar(c, `Mongolia Hazard Watch: ${U.en[state.hazard]} by soum, ${state.date}`))] };
   }
@@ -214,14 +222,14 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
     const s = c.s, tr = s.long.trend, days = new Map(s.long.high.map((r) => [r.y, r.v])), slope = round(tr?.slopeDecade, 3), lo = round(tr?.ciDecade?.[0], 3), hi = round(tr?.ciDecade?.[1], 3);
     const head = ["area", "hazard", "period", "kind", "mean_score", "high_days", "trend_dec", "trend_lo", "trend_hi"];
     const rows = [...s.months.map((r) => [s.label, state.hazard, `${r.y}-${String(r.m).padStart(2, "0")}`, "month", round(r.v, 2), null, null, null, null]),
-      ...s.long.years.map((r) => [s.label, state.hazard, r.y, "year", round(r.v, 2), round(days.get(r.y)), slope, lo, hi])];
+      ...s.long.years.map((r) => [s.label, state.hazard, periodLabel(r.y, s.season), s.season ? "winter" : "year", round(r.v, 2), round(days.get(r.y)), slope, lo, hi])];
     return single(`${fileBase(c)}_series.csv`, csv(head, rows));
   }
   function asSeriesJson(c) {
     const s = c.s, days = new Map(s.long.high.map((r) => [r.y, r.v]));
     const data = { area: s.label, hazard: state.hazard, unit: "score 0-100", summary: summaryEn(c),
       months: s.months.map((r) => ({ period: `${r.y}-${String(r.m).padStart(2, "0")}`, mean_score: round(r.v, 2) })),
-      years: s.long.years.map((r) => ({ year: r.y, mean_score: round(r.v, 2), high_risk_days: round(days.get(r.y)) })), trend: s.long.trend };
+      years: s.long.years.map((r) => ({ year: s.season ? periodLabel(r.y, s.season) : r.y, mean_score: round(r.v, 2), high_risk_days: round(days.get(r.y)) })), trend: s.long.trend };
     return single(`${fileBase(c)}_series.json`, JSON.stringify(data, null, 1));
   }
 
@@ -300,7 +308,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
           if (tr.ciDecade) pair("ci95", `[${tr.ciDecade[0].toFixed(2)}, ${tr.ciDecade[1].toFixed(2)}]`);
         } else L.push(t("too_short"));
         if (typeof g.highMean === "number") pair("high_days", g.highMean.toFixed(1));
-        if (g.highWorst?.v >= 0.05) pair("high_worst", `${g.highWorst.y}: ${g.highWorst.v.toFixed(1)}`);
+        if (g.highWorst?.v >= 0.05) pair("high_worst", `${periodLabel(g.highWorst.y, c.s.season)}: ${g.highWorst.v.toFixed(1)}`);
       }
       section("k_verify");
       if (!v) L.push(t(state.hazard === "all" ? "v_all" : "v_none"));
@@ -313,6 +321,7 @@ export function initDownloads({ box, state, t, frameNow, uFrameNow, classOf, cla
       }
       section("n_read");
       L.push(t("n_read1"), t("n_read2"), all.map((k) => `  ${k.min}–${Math.min(Math.round(k.max), 100)}: ${classLabel(k.key)}`).join("\r\n"), t("n_fields"));
+      if (isDzud(state)) L.push(t("n_fields_dzud"));
     } else {
       const b = baseLayer();
       pair("n_date", state.date);
