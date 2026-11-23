@@ -1,0 +1,30 @@
+# Runs the tests on a branch or a pull request, before anything reaches main and the site. Publishes nothing.
+name: Tests
+on:
+  push:
+    branches: ["feature/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Page tests
+        run: node --test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r pipeline/requirements.txt
+      - name: Pipeline tests
+        run: |
+          python tests/test_dzud.py
+          python tests/test_fwi_np.py
+      - name: The daily job can be loaded
+        run: cd pipeline && python -c "import build, update, dzud_build; print('ok')"
