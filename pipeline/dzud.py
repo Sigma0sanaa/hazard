@@ -135,13 +135,15 @@ def press_z(winter, grids):
 
 
 # ------------------------------------------------------------------- inputs
-def season_days(winter):
-    """(date, noon temperature, snow depth cm) of every day of the season in the cache, in order. Stops at a gap."""
+def season_days(winter, start=None):
+    """(date, noon temperature, snow depth cm) of every day of the season in the cache from `start`, in order. Stops at a gap."""
     ti, si = BANDS.index("t"), BANDS.index("sd")
-    expect = dt.date(winter, 11, 1)
+    start = expect = start or dt.date(winter, 11, 1)
     for y, m in ((winter, 11), (winter, 12), (winter + 1, 1), (winter + 1, 2), (winter + 1, 3)):
         for half, first in (("a", 1), ("b", 17)):
             p = os.path.join(CACHE, "era5", f"{y}{m:02d}{half}.npy")
+            if (y, m) < (start.year, start.month):
+                continue
             if not os.path.exists(p):
                 return
             a = np.load(p, mmap_mode="r")

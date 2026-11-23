@@ -38,6 +38,11 @@ jobs:
             rm -rf data/gee pipeline/state
             git checkout FETCH_HEAD -- data/gee pipeline/state
           fi
+          # dzud came after the other hazards: where gee-data does not hold its history yet, the copy on main is kept
+          for f in data/gee/dzud data/gee/monthly_dzud.bin.gz data/gee/highdays_dzud.bin.gz; do
+            [ -e "$f" ] || git checkout "$GITHUB_SHA" -- "$f"
+          done
+          ls pipeline/state/dzud_* > /dev/null 2>&1 || git checkout "$GITHUB_SHA" -- 'pipeline/state/dzud_*'
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

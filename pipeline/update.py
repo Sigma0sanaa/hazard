@@ -3,7 +3,8 @@
 Two months are recomputed, not one day, because ERA5-Land replaces the GFS bridge about six days later and the last
 days must then be redone. It costs a couple of minutes of Earth Engine time a day.
 
-Needs in the repository: pipeline/model.json, model_fire.npz, model_flood.npz, static_small.npz and pipeline/state.
+Needs in the repository: pipeline/model.json, model_fire.npz, model_flood.npz, model_dzud.npz, static_small.npz and
+pipeline/state.
 On GitHub Actions the login comes from the secret EE_SERVICE_ACCOUNT_JSON.
 
     python update.py

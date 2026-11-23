@@ -2,6 +2,7 @@
 
     python build.py            everything from 2001
     python build.py 2026-10    only from that month on; the rest of data/gee is kept (used by update.py)
+    python build.py dzud       dzud alone, every winter; the other hazards are kept as they are
 
 ERA5-Land ends about six days ago. After that the weather comes from NOAA GFS and the rain from GPM IMERG, and the
 moisture codes carry on from the last ERA5-Land day. manifest.bridge_from says where that starts.
@@ -21,10 +22,12 @@ import numpy as np
 
 import calibrate as K
 import common as C
+import dzud as D
+import dzud_build as DB
 import fwi_np as F
 import load as L
 import scores as S
-from fetch_era5 import CACHE
+from fetch_era5 import BANDS, CACHE
 
 HERE = os.path.dirname(__file__)
 ROOT = os.path.join(HERE, "..")
@@ -165,7 +168,8 @@ def save_states(snaps):
     """Moisture codes at the start of the latest months: the daily update starts from these."""
     os.makedirs(STATE, exist_ok=True)
     for f in os.listdir(STATE):
-        os.remove(os.path.join(STATE, f))
+        if f.startswith("fwi_"):  # dzud keeps its own (dzud_build.py)
+            os.remove(os.path.join(STATE, f))
     for d in sorted(snaps)[-3:]:
         a = snaps[d]
         np.savez_compressed(os.path.join(STATE, f"fwi_{d:%Y-%m}.npz"), ffmc=a[0].astype(np.float32), dmc=a[1].astype(np.float32), dc=a[2].astype(np.float32))
@@ -176,9 +180,45 @@ def load_state(ym):
     return z["ffmc"].astype(np.float64), z["dmc"].astype(np.float64), z["dc"].astype(np.float64)
 
 
+def era5_end():
+    """Last ERA5-Land day in the cache and the snow on it."""
+    p = os.path.join(CACHE, "era5")
+    name = sorted(n for n in os.listdir(p) if not n.endswith(".tmp.npy"))[-1]
+    a = np.load(os.path.join(p, name), mmap_mode="r")
+    first = dt.date(int(name[:4]), int(name[4:6]), 1 if name[6] == "a" else 17)
+    return first + dt.timedelta(days=a.shape[1] - 1), np.array(a[BANDS.index("sd"), -1], np.float32)
+
+
+def dzud(start, last_day, cells, M):
+    """Dzud has its own files. A part that cannot be computed is named, not filled in."""
+    end, snow = era5_end()
+    extra = [(d, a[0]) for d, a in bridge(end) if d <= last_day]
+    DB.build(OUT, STATE, start, last_day, D.grids(), M["dzud"], cells, extra, snow)
+
+
+def add_dzud(man, M):
+    part = DB.manifest_part(M["dzud"])
+    man["dzud"], man["verification"]["dzud"] = part["info"], part["verification"]
+    man["uncertainty"]["dzud"], man["sources"]["dzud"] = part["uncertainty"], part["sources"]
+    return man
+
+
+def write_manifest(man):
+    with open(os.path.join(OUT, "manifest.json"), "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(man, fh, ensure_ascii=False, indent=1)
+
+
 def main(start=None):
     s = L.static() if os.path.exists(os.path.join(CACHE, "static.npz")) else dict(np.load(os.path.join(HERE, "static_small.npz")))
     cells = S.output_cells(s)
+    if start == "dzud":
+        path = os.path.join(OUT, "manifest.json")
+        man = json.load(open(path, encoding="utf-8"))
+        M = S.model()
+        dzud(None, dt.date.fromisoformat(man["last_date"]), cells, M)
+        write_manifest(add_dzud(man, M))
+        print("dzud written to", man["last_date"], flush=True)
+        return
     ctx = dict(s=s, M=S.model(), fm=dict(np.load(os.path.join(HERE, "model_fire.npz"))), z=np.load(os.path.join(HERE, "model_flood.npz")), cells=cells, prone=S.prone_rank(s, cells))
     from_month = tuple(int(v) for v in start.split("-")) if start else FIRST_MONTH
     if start is None:
@@ -202,7 +242,8 @@ def main(start=None):
     for h in CUBES:
         for name, table in ((f"monthly_{h}", ctx["monthly"][h]), (f"highdays_{h}", ctx["high"][h])):
             write_cube(name, [table[k] for k in sorted(table)])
-    json.dump(manifest(ctx), open(os.path.join(OUT, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    dzud(from_month if start else None, ctx["last_day"], cells, ctx["M"])
+    write_manifest(add_dzud(manifest(ctx), ctx["M"]))
     save_states(snaps)
     total = sum(os.path.getsize(os.path.join(r, n)) for r, _, fs in os.walk(OUT) for n in fs)
     print("written", round(total / 1e6, 1), "MB to", ctx["last_day"], "bridge from", ctx.get("bridge_from"), flush=True)

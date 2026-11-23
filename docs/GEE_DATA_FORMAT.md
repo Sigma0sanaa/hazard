@@ -10,7 +10,10 @@ keeps the cost independent of the number of visitors.
 |---|---|
 | `fetch_era5.py`, `fetch_obs.py`, `fetch_gfs.py`, `fetch_static.py` | read inputs from Earth Engine to a local cache (`../gee_cache`, about 7 GB, not in the repository) |
 | `calibrate.py` | `prep`, `fire`, `dust`, `flood`, `uinput`: fit the models, verify on unseen years, measure input uncertainty |
-| `build.py` | write `data/gee`; with a month argument, only from that month on |
+| `build.py` | write `data/gee`; with a month argument, only from that month on; `build.py dzud` writes dzud alone |
+| `fetch_nso.py` | herds and losses by soum from the National Statistics Office to `nso_soums.csv`; by hand, once a year |
+| `dzud.py` | `climate` then `calibrate`: climate per cell, herd pressure, the calibrated chance and its check |
+| `dzud_build.py` | the dzud files and their monthly states, called by `build.py` |
 | `update.py` | daily job: last two months, from an empty cache, using `model*.npz`, `static_small.npz` and `state/` |
 | `soum_names.py` | Cyrillic soum names |
 | `build_camps.py` | winter and spring camps as rounded counts, run by hand from the source shapefiles |
@@ -28,6 +31,16 @@ The daily job writes to the branch `gee-data`, which holds one commit and is rep
 | `daily/YYYY-MM.bin.gz` | uint8 `[day][band][ny][nx]`; bands in `manifest.daily_bands`; a day not computed is all 255 |
 | `monthly_<h>.bin.gz` | uint8 `[month][ny][nx]`, mean model score, from `first_month`; `h` = `all`, `fire`, `dust`, `flood` |
 | `highdays_<h>.bin.gz` | uint8 `[month][ny][nx]`, days with model score ≥ 60, from `first_month` |
+
+| `dzud/YYYY-MM.bin.gz` | uint8 `[day][band][ny][nx]`, November to March only; bands in `manifest.dzud.bands`: score, snow z, cold z. Each day after the first is the change from the day before, modulo 256 |
+| `dzud/season_YYYY.bin.gz` | uint8 `[2][ny][nx]`: herd pressure z and summer z of the winter that starts in YYYY |
+| `monthly_dzud.bin.gz`, `highdays_dzud.bin.gz` | as above; months outside the season hold no data |
+
+Dzud z-scores are stored as `(z + 3) / 6 · 240` in steps of 10, 255 = no data. The dzud score is `20·(log4(odds / odds of the base rate) + 2)`,
+the base rate in `manifest.dzud.base`. Dzud is not part of `all`.
+
+Each year: run `fetch_nso.py` when the December census is out (about February), then `dzud.py climate`, `dzud.py calibrate`,
+`build.py dzud`. Until then the latest census in the file is used.
 
 `data/soums.geojson`: 339 soums from geoBoundaries (NSO Mongolia, OCHA ROAP, CC BY 3.0 IGO), simplified; `name`, `aimag` are the
 source romanisation, `name_mn`, `aimag_mn` our conversion to Cyrillic.

@@ -6,6 +6,7 @@ import tempfile
 
 import numpy as np
 
+os.environ["HAZARD_CACHE"] = tempfile.mkdtemp()  # a small cache of made-up weather, never the real one
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
 
 
@@ -85,6 +86,78 @@ def test_chance():
     assert abs(a + 2) < 0.1 and abs(sl - 1.5) < 0.1
     a, sl = D.fit_line(-x, y)  # a date where a worse index went with fewer losses: no skill, so the average chance for all
     assert sl == 0 and abs(1 / (1 + np.exp(-a)) - y.mean()) < 1e-9
+
+
+def test_files():
+    """The daily job, which starts from an empty cache and a stored state, must write the same bytes as the full run."""
+    import calendar
+    import gzip
+    import shutil
+    from datetime import date, timedelta
+    import common as C
+    import dzud as D
+    import dzud_build as B
+    from fetch_era5 import BANDS, CACHE
+    size, C.NY, C.NX = (C.NY, C.NX), 2, 3
+    try:
+        rng = np.random.default_rng(3)
+        era, veg = os.path.join(CACHE, "era5"), os.path.join(CACHE, "veg")
+        os.makedirs(era), os.makedirs(veg)
+        for y, m in [(2001, 11), (2001, 12)] + [(2002, k) for k in (1, 2, 3, 11, 12)] + [(2003, 1), (2003, 2)]:
+            last = calendar.monthrange(y, m)[1] if (y, m) != (2003, 2) else 20
+            for half, a, b in (("a", 1, 16), ("b", 17, last)):
+                x = np.zeros((len(BANDS), b - a + 1, 2, 3), np.float16)
+                x[BANDS.index("t")], x[BANDS.index("sd")] = rng.normal(-15, 6, x.shape[1:]), rng.random(x.shape[1:]) * 15
+                np.save(os.path.join(era, f"{y}{m:02d}{half}.npy"), x)
+        for y in (2001, 2002):
+            for m in (7, 8):
+                np.save(os.path.join(veg, f"{y}{m:02d}.npy"), np.full((2, 2, 3), 0.3, np.float16))
+        n = len(D.NODES)
+        g = dict(t_mu=np.full((n, 2, 3), -15.0), t_sd=np.full((n, 2, 3), 2.0), s_mu=np.full((n, 2, 3), 1.8), s_sd=np.full((n, 2, 3), 0.3),
+                 n_mu=np.full((2, 3), 0.28), n_sd=np.full((2, 3), 0.05), press=np.zeros((2, 2, 3)), p_years=np.array([2000, 2001]))
+        m = dict(a=[-2.0] * n, b=list(np.linspace(0.7, 2.0, n)), base=0.124)
+        cells = np.ones((2, 3), bool)
+        cells[0, 0] = False
+        full, st = tempfile.mkdtemp(), tempfile.mkdtemp()
+        bridge = [(date(2003, 2, 21), np.full((2, 3), -10.0)), (date(2003, 2, 22), np.full((2, 3), -11.0))]
+        open(os.path.join(st, "fwi_2003-02.npz"), "w").close()
+        assert B.build(full, st, None, date(2003, 2, 22), g, m, cells, bridge) == []
+        assert os.path.exists(os.path.join(st, "fwi_2003-02.npz"))  # another hazard's state is left alone
+        have = sorted(os.listdir(os.path.join(full, "dzud")))
+        assert have == ["2001-11.bin.gz", "2001-12.bin.gz", "2002-01.bin.gz", "2002-02.bin.gz", "2002-03.bin.gz", "2002-11.bin.gz", "2002-12.bin.gz",
+                        "2003-01.bin.gz", "2003-02.bin.gz", "season_2001.bin.gz", "season_2002.bin.gz"]
+        feb = B.undelta(np.frombuffer(gzip.open(os.path.join(full, "dzud", "2003-02.bin.gz")).read(), np.uint8).reshape(28, 3, 2, 3))
+        x = rng.integers(0, 256, (5, 2), np.uint8)
+        assert (B.undelta(B.delta(x)) == x).all()
+        assert B.encode_z(np.array([-3.0, 0.0, 0.26, 3.0, np.nan])).tolist() == [0, 120, 130, 240, 255]
+        assert (feb[:, :, 0, 0] == 255).all() and (feb[:22, :, 1, 1] != 255).all() and (feb[22:] == 255).all()  # outside, computed, not yet
+        cube = np.frombuffer(gzip.open(os.path.join(full, "monthly_dzud.bin.gz")).read(), np.uint8).reshape(-1, 2, 3)
+        assert len(cube) == 26 and (cube[:10] == 255).all() and cube[10, 1, 1] != 255 and (cube[15] == 255).all()  # April 2002 is out of season
+        # the daily job: the cache holds only 17 December on, no summer NDVI; the state carries the rest
+        job = tempfile.mkdtemp()
+        shutil.copytree(full, job, dirs_exist_ok=True)
+        for f in os.listdir(era):
+            if f < "200212b.npy":
+                os.remove(os.path.join(era, f))
+        shutil.rmtree(veg)
+        os.remove(os.path.join(job, "dzud", "2003-01.bin.gz"))
+        assert B.build(job, st, (2003, 1), date(2003, 2, 22), g, m, cells, bridge) == []
+        for f in have + ["../monthly_dzud.bin.gz", "../highdays_dzud.bin.gz"]:
+            assert open(os.path.join(full, "dzud", f), "rb").read() == open(os.path.join(job, "dzud", f), "rb").read(), f
+        # 1-2 November 2002, before ERA5-Land has any day of the winter: GFS temperature on the snow of 31 October
+        early, es = tempfile.mkdtemp(), tempfile.mkdtemp()
+        for m_ in (7, 8):
+            os.makedirs(veg, exist_ok=True)
+            np.save(os.path.join(veg, f"2002{m_:02d}.npy"), np.full((2, 2, 3), 0.3, np.float16))
+        shutil.rmtree(era), os.makedirs(era)
+        two = [(date(2002, 10, 31), np.full((2, 3), -4.0)), (date(2002, 11, 1), np.full((2, 3), -5.0)), (date(2002, 11, 2), np.full((2, 3), -6.0))]
+        assert B.build(early, es, (2002, 10), date(2002, 11, 2), g, m, cells, two, np.full((2, 3), 2.0)) == []
+        nov = B.undelta(np.frombuffer(gzip.open(os.path.join(early, "dzud", "2002-11.bin.gz")).read(), np.uint8).reshape(30, 3, 2, 3))
+        assert (nov[:2, :, 1, 1] != 255).all() and (nov[2:] == 255).all()
+        # without the state there is no score, and the job says so
+        assert B.build(tempfile.mkdtemp(), tempfile.mkdtemp(), (2003, 1), date(2003, 2, 22), g, m, cells, bridge) != []
+    finally:
+        C.NY, C.NX = size
 
 
 if __name__ == "__main__":

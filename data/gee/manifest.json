@@ -110,6 +110,9 @@
     13.76,
     13.76
    ]
+  },
+  "dzud": {
+   "u_model": 8.63
   }
  },
  "verification": {
@@ -152,6 +155,22 @@
    "n": 12,
    "auc": 0.685,
    "events_hit": 5
+  },
+  "dzud": {
+   "reference": "NSO adult livestock losses >= 6 % by soum",
+   "period": "2011/12-2024/25, each winter left out",
+   "n": 581,
+   "auc": 0.719,
+   "auc_ci": [
+    0.606,
+    0.823
+   ],
+   "pod": 0.127,
+   "far": 0.71,
+   "csi": 0.097,
+   "brier": 0.1041,
+   "bss": 0.072,
+   "share_flagged": 0.0542
   }
  },
  "sources": {
@@ -235,6 +254,54 @@
     "resolution": "250 m",
     "role": "Verification"
    }
+  ],
+  "dzud": [
+   {
+    "name": "ERA5-Land (ECMWF)",
+    "resolution": "0.1°",
+    "role": "Snow depth, air temperature since 1 November"
+   },
+   {
+    "name": "MODIS MCD43A4",
+    "resolution": "500 m",
+    "role": "July-August NDVI"
+   },
+   {
+    "name": "NSO Mongolia (1212.mn)",
+    "resolution": "soum",
+    "role": "Herds (pressure), adult losses (calibration)"
+   },
+   {
+    "name": "MODIS MCD12Q1",
+    "resolution": "500 m",
+    "role": "Pasture share"
+   },
+   {
+    "name": "NOAA GFS",
+    "resolution": "0.25°",
+    "role": "Temperature of the last days"
+   }
   ]
+ },
+ "dzud": {
+  "bands": [
+   "dzud",
+   "snow",
+   "cold"
+  ],
+  "season": [
+   11,
+   3
+  ],
+  "first_winter": 2001,
+  "early_month": 11,
+  "base": 0.12390701642141182,
+  "event": 0.06,
+  "weights": {
+   "snow": 0.41,
+   "cold": 0.35,
+   "press": 0.29,
+   "summer": 0.24
+  }
  }
 }
