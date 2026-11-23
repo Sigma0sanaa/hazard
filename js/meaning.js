@@ -2,7 +2,9 @@
  * (cellsLevel in js/stats.js), so the words speak of the average chance of a cell of the area. Fire and dust scores are powers of 4 of the lift of a fitted probability over its
  * national average (pipeline/calibrate.py: score = 20 * (log4(p / base) + 2)), so a score can be read back as "how
  * many times the usual chance". The flood score maps the return period of three days of rain and snowmelt
- * (1, 2, 5, 20, 100 years to 0, 40, 60, 80, 100; pipeline/scores.py), lowered away from drainage lines. */
+ * (1, 2, 5, 20, 100 years to 0, 40, 60, 80, 100; pipeline/scores.py), lowered away from drainage lines. The dzud score is
+ * the powers of 4 on the odds that a soum loses 6 % or more of its adult livestock (pipeline/dzud.py). */
+import { oddsChance } from "./stats.js";
 
 /** Average daily chance of the event per 0.1° cell in the data the model was fitted to (pipeline/model.json "base"). */
 export const SCORE_MODEL = {
@@ -12,6 +14,9 @@ export const SCORE_MODEL = {
   // about 3 times high against the 2001-2025 average. Refit with a time term to remove it (docs/HANDOFF.md, 3.1).
   fire: { base: 0.0001784, event: "fire", seen: { period: "2018–2025", rate: 0.0000609 } },
   dust: { base: 0.02235, event: "dust", months: [3, 4, 5] }, // TROPOMI aerosol index anomaly >= 1, fitted on March-May
+  // Soum-winters of 2011/12-2024/25 with adult losses of 6 % or more. On winters left out of the fit, scores of 60 and over
+  // said 43-73 % and 24-30 % happened (docs/DZUD_CHECK.md), so no chance above `trust` is said.
+  dzud: { base: 0.1239, event: "dzud", trust: 0.3, said: "24–30%", season: [11, 3], early: 11 },
 };
 
 /** How many times the fitted base rate stands above what the unseen years held, or null where that is not known. */
@@ -44,6 +49,11 @@ export function floodYears(score) {
 export function meaning(hazard, score, U, month) {
   const lo = clamp(score - (U ?? 0)), hi = clamp(score + (U ?? 0));
   const m = SCORE_MODEL[hazard];
+  if (hazard === "dzud") {
+    const p = oddsChance(clamp(score), m.base), pHi = oddsChance(hi, m.base), cap = (v) => Math.min(v, m.trust);
+    return { kind: "odds", p: cap(p), beyond: p > m.trust, pLo: cap(oddsChance(lo, m.base)), pHi: cap(pHi), hiBeyond: pHi > m.trust, ratio: p / m.base,
+      floor: atFloor(score), early: month === m.early, offSeason: Boolean(month) && month > m.season[1] && month < m.season[0] };
+  }
   if (m) {
     return { kind: "lift", ratio: lift(score), ratioLo: lift(lo), ratioHi: lift(hi), p: m.base * lift(score), pLo: m.base * lift(lo), pHi: Math.min(1, m.base * lift(hi)),
       floor: atFloor(score), ceiling: atCeiling(score), floorLo: atFloor(lo), ceilingHi: atCeiling(hi),

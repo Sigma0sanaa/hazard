@@ -284,18 +284,25 @@ export function cellsMean(frame, cells, decode) {
 export const scoreToRatio = (s) => 4 ** (s / 20 - 2);
 export const ratioToScore = (r) => Math.min(100, Math.max(0, 20 * (Math.log(r) / Math.log(4) + 2)));
 
+/** The dzud score is the same scale on the odds (pipeline/dzud.py to_score): its base rate is 12 %, and a ratio of chances
+ * could not pass 70 points. For a rare event odds and chance are equal. */
+export function oddsChance(s, base) { const o = base / (1 - base) * scoreToRatio(s); return o / (1 + o); }
+export const oddsScore = (p, base) => ratioToScore(p / (1 - p) / (base / (1 - base)));
+
 /**
- * The level of an area. On a linear scale it is the weighted mean score. On the ratio scale of fire and dust (`ratio`
- * true) it is the score of the mean chance ratio: the mean of the scores would be the geometric mean of the chances,
+ * The level of an area. On a linear scale it is the weighted mean score. On the ratio scale of fire and dust (`scale`
+ * "lift", or true) it is the score of the mean chance ratio, on the odds scale of dzud ({ odds: base rate }) that of the
+ * mean chance: the mean of the scores would be the geometric mean of the chances,
  * which is always below their average and reads an area with a few very high cells as calm (Jensen's inequality).
  * The spread, effective size and coverage are those of cellsMean, for the error budget.
  */
-export function cellsLevel(frame, cells, decode, ratio = false) {
+export function cellsLevel(frame, cells, decode, scale = null) {
   const m = cellsMean(frame, cells, decode);
-  if (!m || !ratio) return m && { ...m, meanScore: m.mean };
+  if (!m || !scale) return m && { ...m, meanScore: m.mean };
+  const base = scale.odds, chance = base ? (v) => oddsChance(v, base) : scoreToRatio;
   let sw = 0, sr = 0;
-  for (const { i, w } of cells) { const v = decode(frame[i]); if (v !== null) { sw += w; sr += w * scoreToRatio(v); } }
-  return { ...m, meanScore: m.mean, mean: ratioToScore(sr / sw) };
+  for (const { i, w } of cells) { const v = decode(frame[i]); if (v !== null) { sw += w; sr += w * chance(v); } }
+  return { ...m, meanScore: m.mean, mean: base ? oddsScore(sr / sw, base) : ratioToScore(sr / sw) };
 }
 
 /** Lag-1 spatial autocorrelation between east-west neighbours among the given cells. */

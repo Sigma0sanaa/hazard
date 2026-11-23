@@ -3,6 +3,7 @@
 import { cellsLevel, cellsMean, combineUncertainty, fin, samplingUncertainty, spatialLag1, trendReport } from "./stats.js";
 import { gumbelFit, returnLevel } from "./flood_stats.js";
 import { decode, decodeCount } from "./dataset.js";
+import { SCORE_MODEL } from "./meaning.js";
 
 export const HIGH_SCORE = 60;
 const KM2_PER_DEG2 = 111.32 * 111.32;
@@ -24,35 +25,47 @@ export function monthSeries(cube, firstMonth, cells) {
   return out;
 }
 
-/** Yearly means. Only years with all 12 months count: a partial year would bias the trend towards its season. */
-export function yearSeries(months) {
-  const by = new Map();
+/** A hazard with a season ([first month, last month], over the turn of the year) is counted by season, named by the year it
+ * starts in: the period of a month, or null outside the season. Without a season it is the calendar year. */
+const periodOf = (y, m, season) => (!season ? y : m >= season[0] ? y : m <= season[1] ? y - 1 : null);
+const periodMonths = (season) => (season ? 13 - season[0] + season[1] : 12);
+/** "2015", or "2015/16" for a season. */
+export const periodLabel = (y, season) => (season ? `${y}/${String((y + 1) % 100).padStart(2, "0")}` : String(y));
+
+/** Yearly (or seasonal) means. Only whole years count: a partial year would bias the trend towards its season. */
+export function yearSeries(months, season = null) {
+  const by = new Map(), n = periodMonths(season);
   for (const r of months) {
-    if (!by.has(r.y)) by.set(r.y, []);
-    if (fin(r.v)) by.get(r.y).push(r.v);
+    const y = periodOf(r.y, r.m, season);
+    if (y === null) continue;
+    if (!by.has(y)) by.set(y, []);
+    if (fin(r.v)) by.get(y).push(r.v);
   }
-  return [...by].map(([y, v]) => ({ y, v: v.length === 12 ? v.reduce((a, b) => a + b, 0) / 12 : null, peak: v.length === 12 ? Math.max(...v) : null, months: v.length }));
+  return [...by].map(([y, v]) => ({ y, v: v.length === n ? v.reduce((a, b) => a + b, 0) / n : null, peak: v.length === n ? Math.max(...v) : null, months: v.length }));
 }
 
-/** High-risk days per year, summed from the monthly counts. A year missing a month has no total: it would read too low. */
-export function highDaySeries(cube, firstMonth, cells) {
+/** High-risk days per year (or season), summed from the monthly counts. One missing a month has no total: it would read too low. */
+export function highDaySeries(cube, firstMonth, cells, season = null) {
   const [y0, m0] = firstMonth.split("-").map(Number), by = new Map();
   for (let f = 0; f < cube.frames; f++) {
-    const y = y0 + Math.floor((m0 - 1 + f) / 12), r = cellsMean(cube.frame(f), cells, decodeCount);
+    const k = m0 - 1 + f, y = periodOf(y0 + Math.floor(k / 12), (k % 12) + 1, season);
+    if (y === null) continue;
+    const r = cellsMean(cube.frame(f), cells, decodeCount);
     const rec = by.get(y) ?? { sum: 0, n: 0 };
     if (r) { rec.sum += r.mean; rec.n += 1; }
     by.set(y, rec);
   }
-  return [...by].map(([y, r]) => ({ y, v: r.n === 12 ? r.sum : null }));
+  return [...by].map(([y, r]) => ({ y, v: r.n === periodMonths(season) ? r.sum : null }));
 }
 
-/** Hazards whose score is a chance ratio in powers of 4 (js/meaning.js): their area level is the mean chance, not the mean score. */
-export const ratioScale = (hazard) => hazard === "fire" || hazard === "dust";
+/** Hazards whose score stands for a chance (js/meaning.js): their area level is the mean chance, not the mean score. Fire and
+ * dust are ratios in powers of 4, dzud the same on the odds. See cellsLevel in js/stats.js. */
+export const chanceScale = (hazard) => (hazard === "fire" || hazard === "dust" ? "lift" : hazard === "dzud" ? { odds: SCORE_MODEL.dzud.base } : null);
 
-/** Level of the area on one day with its combined uncertainty (JCGM 100). `ratio`: see cellsLevel in js/stats.js.
+/** Level of the area on one day with its combined uncertainty (JCGM 100). `scale`: see cellsLevel in js/stats.js.
  * `mean` is the level shown and classed; `meanScore` is the plain mean of the cell scores. */
-export function dayReport({ frame, uframe, cells, grid, classes, uModel, ratio = false }) {
-  const m = cellsLevel(frame, cells, decode, ratio);
+export function dayReport({ frame, uframe, cells, grid, classes, uModel, scale = null }) {
+  const m = cellsLevel(frame, cells, decode, scale);
   if (!m) return null;
   const rho = spatialLag1(frame, cells, decode, grid.nx);
   const uSampling = samplingUncertainty(m.sd, m.neff, rho);
@@ -71,8 +84,8 @@ export function dayReport({ frame, uframe, cells, grid, classes, uModel, ratio =
 }
 
 /** Long-term block: trend, high-risk days and return levels of the highest monthly mean of each year. */
-export function longReport({ months, high }) {
-  const years = yearSeries(months), whole = years.filter((r) => fin(r.v));
+export function longReport({ months, high, season = null }) {
+  const years = yearSeries(months, season), whole = years.filter((r) => fin(r.v));
   const trend = trendReport(years.map((r) => r.y), years.map((r) => r.v));
   const days = high.filter((r) => fin(r.v)).map((r) => r.v);
   const peaks = whole.map((r) => r.peak);
