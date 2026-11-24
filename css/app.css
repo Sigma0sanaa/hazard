@@ -445,3 +445,4 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
   .s3-main { flex-direction: column; }
   .s3-side { width: auto; max-height: 34vh; border-left: 0; border-top: 1px solid var(--line); }
 }
+.s3-sel, .s3-sel option { color: var(--ink); background: #1b2026; }

@@ -77,14 +77,10 @@ export function makeState(w, h) {
 const ghost = (zEdge, zIn, d) => zEdge - d * Math.max(0.001, (zIn - zEdge) / d);
 
 /** Flow across one face from cell a (level ea, bed za) to cell b: the local inertial update. */
-function face(q, ea, za, eb, zb, ha, hb, n2, dt, d) {
+function face(q, ea, za, eb, zb, ha, hb, n2, dt, d) { // ha, hb: kept for the same call as the card's shader
   const hf = Math.max(ea, eb) - Math.max(za, zb);
   if (hf <= FLOOD3D.hMin) return 0;
   let nq = (q - FLOOD3D.g * hf * dt * (eb - ea) / d) / (1 + FLOOD3D.g * dt * n2 * Math.abs(q) / Math.pow(hf, 7 / 3));
-  // no face takes more than the water of its upstream cell in one step; a depth that would still turn negative (water
-  // leaving by several faces at once) is set to 0 and counted in st.clipped
-  const cap = (nq > 0 ? ha : hb) * d / dt;
-  if (Math.abs(nq) > cap) nq = Math.sign(nq) * cap;
   return nq;
 }
 
@@ -104,6 +100,22 @@ export function step(st, z, nMan, src, dx, dy, dt) {
     if (r === h) { const i = (h - 1) * w + c, zb = ghost(z[i], z[i - (h > 1 ? w : 0)], dy); qy[k] = Math.max(0, face(qy[k], z[i] + d[i], z[i], zb, zb, d[i], 0, nMan[i] ** 2, dt, dy)); continue; }
     const a = (r - 1) * w + c, b = a + w, n2 = (0.5 * (nMan[a] + nMan[b])) ** 2;
     qy[k] = face(qy[k], z[a] + d[a], z[a], z[b] + d[b], z[b], d[a], d[b], n2, dt, dy);
+  }
+  // no cell gives more water in one step than it holds: where the faces would take more, all its outflows are scaled
+  // down together (the depth then stays at or above 0 and the mass is kept)
+  const scale = st.scale ?? (st.scale = new Float32Array(w * h));
+  for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+    const i = r * w + c, kx = r * (w + 1) + c, ky = r * w + c;
+    const outV = (Math.max(0, -qx[kx]) + Math.max(0, qx[kx + 1])) * dt / dx + (Math.max(0, -qy[ky]) + Math.max(0, qy[ky + w])) * dt / dy;
+    scale[i] = outV > d[i] ? d[i] / outV : 1;
+  }
+  for (let r = 0; r < h; r++) for (let c = 0; c <= w; c++) {
+    const k = r * (w + 1) + c, q = qx[k];
+    if (q > 0 && c > 0) qx[k] = q * scale[r * w + c - 1]; else if (q < 0 && c < w) qx[k] = q * scale[r * w + c];
+  }
+  for (let r = 0; r <= h; r++) for (let c = 0; c < w; c++) {
+    const k = r * w + c, q = qy[k];
+    if (q > 0 && r > 0) qy[k] = q * scale[(r - 1) * w + c]; else if (q < 0 && r < h) qy[k] = q * scale[r * w + c];
   }
   let out = 0, inflow = 0, clipped = 0;
   for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {

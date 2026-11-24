@@ -31,7 +31,7 @@ varying vec2 vUv; varying vec3 vN; varying float vDepth; varying vec3 vPos;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void main() {
   vec3 base = uHasSat ? texture2D(uSat, vUv).rgb : vec3(0.62, 0.58, 0.48);
-  float light = 0.55 + 0.6 * max(dot(normalize(vN), normalize(uSun)), 0.0);
+  float light = 0.72 + 0.38 * max(dot(normalize(vN), normalize(uSun)), 0.0);
   vec3 col = base * light;
   vec2 t = vec2(vUv.x, 1.0 - vUv.y);
   if (uMode == 1 && vDepth > 0.01) {
@@ -53,7 +53,7 @@ void main() {
   }
   if (uMode == 3) {
     float e = mix(texture2D(uEA, t).r, texture2D(uEB, t).r, uMix);
-    if (e > 0.0) col = mix(col, vec3(0.93, 0.55, 0.18), 0.25 + 0.6 * e);
+    if (e > 0.0) col = mix(col, vec3(0.93, 0.50, 0.15), 0.08 + 0.32 * e);
   }
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -117,7 +117,8 @@ export function createScene(parent) {
       const m = cellMetres(g);
       let zmin = Infinity, zmax = -Infinity; for (const v of z) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
       ground = { g, z, w: g.w, h: g.h, W: g.w * m.x, H: g.h * m.y, mx: m.x, my: m.y, zmin, zmax };
-      if (sat) { const t = new THREE.CanvasTexture(sat); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; uniforms.uSat.value = t; uniforms.uHasSat.value = true; }
+      // the picture is shown as stored: the shader writes its colour straight out
+      if (sat) { const t = new THREE.CanvasTexture(sat); t.anisotropy = 4; uniforms.uSat.value = t; uniforms.uHasSat.value = true; }
       else uniforms.uHasSat.value = false;
       buildMesh();
       const span = Math.max(ground.W, ground.H);
@@ -149,8 +150,8 @@ export function createScene(parent) {
       geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(run.x.length * 3), 3));
       geom.setAttribute("alpha", new THREE.BufferAttribute(new Float32Array(run.x.length), 1));
       const mat = new THREE.ShaderMaterial({
-        transparent: true, depthWrite: false,
-        vertexShader: "attribute float alpha; varying float vA; void main(){ vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = clamp(9000.0 / -mv.z, 1.5, 9.0); gl_Position = projectionMatrix * mv; }",
+        transparent: true, depthWrite: false, uniforms: { uSpan: { value: Math.max(ground.W, ground.H) } },
+        vertexShader: "uniform float uSpan; attribute float alpha; varying float vA; void main(){ vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = clamp(4.0 * uSpan / -mv.z, 2.0, 14.0); gl_Position = projectionMatrix * mv; }",
         fragmentShader: "varying float vA; void main(){ vec2 d = gl_PointCoord - 0.5; float r = dot(d, d); if (r > 0.25) discard; gl_FragColor = vec4(0.86, 0.68, 0.42, vA * (1.0 - 4.0 * r)); }",
       });
       points?.geometry.dispose();

@@ -11,7 +11,7 @@
 import { at, cellMetres } from "./inputs.js";
 import { LAND, DUST, THRESHOLD_WIND } from "../aoi/dust.js";
 
-export const DUST3D = { maxParticles: 40000, perHourPeak: 6000, stepMinutes: 5, lifeHours: 18, mixing: 1.5, top: 1500 };
+export const DUST3D = { maxParticles: 40000, perHourPeak: 40000, stepMinutes: 2, lifeHours: 18, mixing: 1.5, top: 1500 };
 
 /** Threshold wind (m/s) of a ground class, or Infinity where no dust rises. */
 export const thresholdOf = (land) => (land === LAND.bare ? THRESHOLD_WIND.favourable.desert : land === LAND.sparse ? THRESHOLD_WIND.favourable.grass : Infinity);

@@ -329,12 +329,14 @@ not an observation; every frame of the view and of the video says so. Design: `d
   cumulative input (USDA NRCS TR-55 1986, soil group C; pasture/grassland/range fair 79, woods fair 73, fallow bare
   91, impervious 98, checked against reproductions of TR-55 Table 2-2; brush fair 70 not double-checked) → local
   inertial routing (Bates, Horritt & Fewtrell 2010; time step α = 0.7 of de Almeida et al. 2012 with the flow speed
-  added to the wave speed, because Mongolian slopes make the flow supercritical; a face never takes more than its
-  upstream cell holds). Manning's n by land cover. Water leaves at the edges. It runs on the graphics card (WebGL2,
+  added to the wave speed, because Mongolian slopes make the flow supercritical; where the faces of a cell would take
+  more water in a step than it holds, all its outflows are scaled down together, so depths stay positive and mass is kept). Manning's n by land cover. Water leaves at the edges. It runs on the graphics card (WebGL2,
   `flood_gpu.js`) and falls back to the processor on a grid of at most 256 cells a side. Checks
   (`tests/sim3d_flood.test.mjs`): 100 mm on CN 79 gives 48.58 mm; a lake at rest stays at rest (1e-4 m); mass is
   kept within 0.1 %; steady flow down a 1 % slope matches Manning's normal depth within 5 %. The card and the
-  processor agreed on a 96 × 80 test (volume 245,283 and 245,271 m³, largest depth difference 1.5 mm).
+  processor agreed on a 96 × 80 test (volume 245,329 and 245,330 m³, largest depth difference 1.8 mm) and on
+  Ulaanbaatar ground (87 × 93 cells, ERA5 weather of 2023-08-05 to 07: 157,917 and 157,878 m³ left, 162,448 m³ of
+  runoff in, 4,572 m³ out at the edges, the same deepest point 1.44 m).
 * **Wildfire (24 h).** Rothermel (1972) with Albini (1976) as in BehavePlus (Andrews 2018, RMRS-GTR-371; the
   equations were read against the open pyretechnics code), Anderson (1982) fuel models from WorldCover (forest → 2
   timber with grass, grass and cropland → 1, shrub → 5, herbaceous wetland → 3; the rest does not burn; no Mongolian

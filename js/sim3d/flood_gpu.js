@@ -20,9 +20,7 @@ float ghost(float ze, float zi, float s) { return ze - s * max(0.001, (zi - ze) 
 float face(float q, float ea, float za, float eb, float zb, float ha, float hb, float n2, float s) {
   float hf = max(ea, eb) - max(za, zb);
   if (hf <= HMIN) return 0.0;
-  float nq = (q - G * hf * dt * (eb - ea) / s) / (1.0 + G * dt * n2 * abs(q) / pow(hf, 7.0 / 3.0));
-  float cap = (nq > 0.0 ? ha : hb) * s / dt;
-  return clamp(nq, -cap, cap);
+  return (q - G * hf * dt * (eb - ea) / s) / (1.0 + G * dt * n2 * abs(q) / pow(hf, 7.0 / 3.0));
 }
 out vec4 o;
 `;
@@ -53,6 +51,32 @@ void main() {
   else { int a = r - 1; float nn = 0.5 * (n(c, a) + n(c, r));
     v = face(q, z(c, a) + d(c, a), z(c, a), z(c, r) + d(c, r), z(c, r), d(c, a), d(c, r), nn * nn, dy); }
   o = vec4(v, 0.0, 0.0, 1.0);
+}`;
+
+// how much of its outflow each cell can give in this step (1 = all; less where the faces would take more than it holds)
+const FS = HEAD + `uniform highp sampler2D QX; uniform highp sampler2D QY;
+void main() {
+  int c = int(gl_FragCoord.x), r = int(gl_FragCoord.y);
+  float outV = (max(0.0, -texelFetch(QX, ivec2(c, r), 0).r) + max(0.0, texelFetch(QX, ivec2(c + 1, r), 0).r)) * dt / dx
+             + (max(0.0, -texelFetch(QY, ivec2(c, r), 0).r) + max(0.0, texelFetch(QY, ivec2(c, r + 1), 0).r)) * dt / dy;
+  float h = d(c, r);
+  o = vec4(outV > h ? h / outV : 1.0, 0.0, 0.0, 1.0);
+}`;
+
+// the flows scaled by the share of their upstream cell, vertical faces then horizontal faces
+const FXS = HEAD + `uniform highp sampler2D Q; uniform highp sampler2D SC;
+void main() {
+  int c = int(gl_FragCoord.x), r = int(gl_FragCoord.y);
+  float q = texelFetch(Q, ivec2(c, r), 0).r;
+  if (q > 0.0 && c > 0) q *= texelFetch(SC, ivec2(c - 1, r), 0).r; else if (q < 0.0 && c < W) q *= texelFetch(SC, ivec2(c, r), 0).r;
+  o = vec4(q, 0.0, 0.0, 1.0);
+}`;
+const FYS = HEAD + `uniform highp sampler2D Q; uniform highp sampler2D SC;
+void main() {
+  int c = int(gl_FragCoord.x), r = int(gl_FragCoord.y);
+  float q = texelFetch(Q, ivec2(c, r), 0).r;
+  if (q > 0.0 && r > 0) q *= texelFetch(SC, ivec2(c, r - 1), 0).r; else if (q < 0.0 && r < H) q *= texelFetch(SC, ivec2(c, r), 0).r;
+  o = vec4(q, 0.0, 0.0, 1.0);
 }`;
 
 // depths from the divergence of the new flows plus the runoff
@@ -143,14 +167,14 @@ export async function runGpu({ z, cover, w, h, dx, dy, rateOf, hours = FLOOD3D.h
   };
   const nMan = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) nMan[i] = MANNING[cover[i]] ?? MANNING[0];
-  const Zt = tex(w, h, Float32Array.from(z)), Nt = tex(w, h, nMan), St = tex(w, h);
+  const Zt = tex(w, h, Float32Array.from(z)), Nt = tex(w, h, nMan), St = tex(w, h), SCt = tex(w, h);
   const Dt = [tex(w, h), tex(w, h)], QXt = [tex(w + 1, h), tex(w + 1, h)], QYt = [tex(w, h + 1), tex(w, h + 1)];
   const ww = Math.ceil(w / 8), wh = Math.ceil(h / 8), Wt = tex(ww, wh), Bt = tex(w, h, null, "RGBA8");
   // the chain that reduces the wave speeds to one texel
   const chain = [Wt];
   while (chain[chain.length - 1].w > 1 || chain[chain.length - 1].h > 1) { const l = chain[chain.length - 1]; chain.push(tex(Math.ceil(l.w / 8), Math.ceil(l.h / 8))); }
   const Ct = [tex(1, 1, null, "RGBA32F"), tex(1, 1, null, "RGBA32F")];
-  const P = { fx: program(gl, FX), fy: program(gl, FY), fd: program(gl, FD), fw: program(gl, FW), fb: program(gl, FB), fr: program(gl, FR), ft: program(gl, FT) };
+  const P = { fx: program(gl, FX), fy: program(gl, FY), fd: program(gl, FD), fw: program(gl, FW), fb: program(gl, FB), fr: program(gl, FR), ft: program(gl, FT), fs: program(gl, FS), fxs: program(gl, FXS), fys: program(gl, FYS) };
   const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -166,7 +190,7 @@ export async function runGpu({ z, cover, w, h, dx, dy, rateOf, hours = FLOOD3D.h
     Object.entries(samplers).forEach(([name, t], k) => { gl.activeTexture(gl.TEXTURE0 + k); gl.bindTexture(gl.TEXTURE_2D, t.t); gl.uniform1i(u(p, name), k); });
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
-  let a = 0, k = 0; // index of the current depth and flows, of the current clock
+  let a = 0, k = 0; // index of the current depth, of the current clock; the current flows are QXt[0], QYt[0]
   const bytes = new Uint8Array(w * h * 4);
   function frame() {
     draw(P.fb, Bt, { D: Dt[a], Z: Zt, N: Nt, T: Ct[k] });
@@ -179,15 +203,19 @@ export async function runGpu({ z, cover, w, h, dx, dy, rateOf, hours = FLOOD3D.h
   function clock() { gl.bindFramebuffer(gl.FRAMEBUFFER, Ct[k].fb); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, clockBuf); return clockBuf[1]; }
   function stepGpu() {
     // the time step from the largest wave speed of the present state, all on the card
-    draw(P.fw, Wt, { D: Dt[a], Z: Zt, N: Nt, QX: QXt[a], QY: QYt[a], T: Ct[k] });
+    draw(P.fw, Wt, { D: Dt[a], Z: Zt, N: Nt, QX: QXt[0], QY: QYt[0], T: Ct[k] });
     for (let l = 1; l < chain.length; l++) draw(P.fr, chain[l], { A: chain[l - 1] }, (p) => gl.uniform2i(u(p, "size"), chain[l - 1].w, chain[l - 1].h));
     const kn = 1 - k;
     draw(P.ft, Ct[kn], { M: chain[chain.length - 1], C: Ct[k] }, (p) => gl.uniform1f(u(p, "dmin"), Math.min(dx, dy)));
     k = kn;
+    // raw flows into the spare textures, then scaled back into the current ones; depths ping-pong
     const b = 1 - a;
-    draw(P.fx, QXt[b], { D: Dt[a], Z: Zt, N: Nt, Q: QXt[a], T: Ct[k] });
-    draw(P.fy, QYt[b], { D: Dt[a], Z: Zt, N: Nt, Q: QYt[a], T: Ct[k] });
-    draw(P.fd, Dt[b], { D: Dt[a], Z: Zt, N: Nt, QX: QXt[b], QY: QYt[b], S: St, T: Ct[k] });
+    draw(P.fx, QXt[1], { D: Dt[a], Z: Zt, N: Nt, Q: QXt[0], T: Ct[k] });
+    draw(P.fy, QYt[1], { D: Dt[a], Z: Zt, N: Nt, Q: QYt[0], T: Ct[k] });
+    draw(P.fs, SCt, { D: Dt[a], Z: Zt, N: Nt, QX: QXt[1], QY: QYt[1], T: Ct[k] });
+    draw(P.fxs, QXt[0], { D: Dt[a], Z: Zt, N: Nt, Q: QXt[1], SC: SCt, T: Ct[k] });
+    draw(P.fys, QYt[0], { D: Dt[a], Z: Zt, N: Nt, Q: QYt[1], SC: SCt, T: Ct[k] });
+    draw(P.fd, Dt[b], { D: Dt[a], Z: Zt, N: Nt, QX: QXt[0], QY: QYt[0], S: St, T: Ct[k] });
     a = b;
   }
   const frames = [frame()], every = FLOOD3D.frameMinutes * 60;
@@ -211,6 +239,6 @@ export async function runGpu({ z, cover, w, h, dx, dy, rateOf, hours = FLOOD3D.h
   const rgba = new Float32Array(w * h * 4);
   gl.readPixels(0, 0, w, h, gl.RGBA, gl.FLOAT, rgba);
   for (let i = 0; i < w * h; i++) depth[i] = rgba[i * 4];
-  for (const t of [Zt, Nt, St, Bt, ...chain, ...Ct, ...Dt, ...QXt, ...QYt]) { gl.deleteTexture(t.t); gl.deleteFramebuffer(t.fb); }
+  for (const t of [Zt, Nt, St, SCt, Bt, ...chain, ...Ct, ...Dt, ...QXt, ...QYt]) { gl.deleteTexture(t.t); gl.deleteFramebuffer(t.fb); }
   return { frames, depth, steps, gpu: true };
 }
