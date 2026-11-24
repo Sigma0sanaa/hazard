@@ -15,11 +15,8 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Take the latest Earth Engine data
@@ -52,5 +49,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+  # Deploying in a job of its own, as GitHub's own Pages workflow does: deploy-pages in the same job twice found
+  # "0 artifacts" 0.2 s after the upload had finished (2026-11-24, runs 209 and 210), so it now starts only after the
+  # build job has ended and the artifact is listed.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
