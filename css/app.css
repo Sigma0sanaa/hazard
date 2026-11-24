@@ -12,7 +12,9 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 #map { position: fixed; inset: 0; background: #0b0f13; }
-#map.is-draw { cursor: crosshair; }
+/* Leaflet leaves touch-action at pan-x pan-y once its own dragging is off: the browser would take the finger for scrolling and
+ * cancel the box. The pinch is Leaflet's own and still works. */
+#map.is-draw { cursor: crosshair; touch-action: none; }
 #map.is-pan { cursor: grabbing; }
 .leaflet-container { font: inherit; background: #0b0f13; }
 .leaflet-tooltip { background: rgba(12, 14, 16, .92); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
@@ -111,6 +113,9 @@ button { cursor: pointer; }
 .stats-open .bottom { left: 258px; right: calc(var(--panel-w) + 14px); }
 .datebar { display: flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 16px; background: rgba(20, 24, 28, .38); position: relative; overflow: hidden; max-height: 110px; transition: max-height .38s cubic-bezier(.22, .8, .3, 1), padding .38s cubic-bezier(.22, .8, .3, 1), margin .38s cubic-bezier(.22, .8, .3, 1), opacity .24s ease, transform .38s cubic-bezier(.22, .8, .3, 1), visibility 0s; }
 .folded .datebar { max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -8px; opacity: 0; transform: translateY(18px); border-color: transparent; box-shadow: none; pointer-events: none; visibility: hidden; transition-delay: 0s, 0s, 0s, 0s, 0s, .38s; }
+.touch-draw { padding: 9px 18px; border: 1px solid rgba(255, 255, 255, .5); border-radius: 999px; background: rgba(20, 24, 28, .82); color: #fff; font-size: 14px; font-weight: 650; }
+.touch-draw.on { background: #fff; color: #101214; }
+.touch-draw[hidden] { display: none; }
 .date-fold { display: flex; align-items: center; gap: 6px; height: 20px; margin-bottom: -4px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: rgba(20, 24, 28, .5); color: var(--ink2); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .date-fold:hover { background: rgba(60, 66, 72, .85); color: #fff; }
 .date-fold span:empty { display: none; }
@@ -344,10 +349,11 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
   .stats-open .bottom { left: 0; }
 }
 @media (max-width: 720px) {
-  .stats { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 52vh; border-width: 1px 0 0; border-radius: 16px 16px 0 0; }
+  .stats { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 46vh; border-width: 1px 0 0; border-radius: 16px 16px 0 0; }
   .stats-open .rail { right: 14px; }
-  .stats-open .bottom { right: 0; bottom: calc(52vh + 8px); }
+  .stats-open .bottom { right: 0; bottom: calc(46vh + 8px); }
   .hz-cap { display: none; }
+  .side { max-height: calc(100dvh - 320px); } /* the day picker and the draw button below stay free */
   .hazbar { padding-left: 6px; }
   .dl-menu, .menu-panel { left: 14px; width: auto; }
   .spin-val { font-size: 14px; }

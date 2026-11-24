@@ -219,6 +219,12 @@ function setMenu(open) {
   renderRail();
 }
 
+/** On a narrow screen the settings cover the map, so they fold away while an area is drawn. */
+function toggleDraw() {
+  if (state.rect.toggle() === "draw" && window.innerWidth <= 1000 && state.sideOpen) setSide(false);
+  else renderRail();
+}
+
 function renderRail() {
   const button = (html, label, on, extra = "") => {
     const b = el("button", { class: "rbtn " + extra, type: "button", title: label, "aria-label": label, onclick: on });
@@ -230,12 +236,18 @@ function renderRail() {
   $("rail").replaceChildren(...[
     button(ICON.menu, t(state.menuOpen ? "menu_close" : "rail_menu"), () => setMenu(!state.menuOpen), state.menuOpen ? "on" : ""),
     results && !state.sideOpen && button(ICON.settings, t("rail_settings"), () => setSide(true)),
-    results && button(draw ? ICON.draw : ICON.move, t(draw ? "rail_draw" : "rail_move"), () => { state.rect.toggle(); renderRail(); }, draw ? "on" : ""),
+    results && button(draw ? ICON.draw : ICON.move, t(draw ? "rail_draw" : "rail_move"), toggleDraw, draw ? "on" : ""),
     results && button("i", t("rail_method"), () => showMethods(state.hazard)),
     button(ICON.download, t("rail_download"), () => { if (state.menuOpen) setMenu(false); state.downloads.toggle(); }),
     button(ICON.home, t("rail_home"), fitMongolia),
     button(t("lang"), t("lang"), () => { state.lang = state.lang === "mn" ? "en" : "mn"; store.set("hw.lang", state.lang); renderAllText(); }),
   ].filter(Boolean));
+  // a finger has no hover to explain the rail button, and the hint of the mouse is hidden on a phone: a button that says it
+  const b = $("touch-draw");
+  b.hidden = !results || !state.rect.touch;
+  b.textContent = t(draw ? "touch_drawing" : "touch_draw");
+  b.classList.toggle("on", draw);
+  b.setAttribute("aria-pressed", String(draw));
 }
 
 /** The screen follows the choice: nothing but the image until a hazard is chosen. */
@@ -470,7 +482,8 @@ async function setHazard(h) {
   renderScreen();
   // a picked hazard opens the left menu on its detailed check, the settings of the computation
   if (h) {
-    setSide(true);
+    if (!(state.sel && window.innerWidth <= 720)) setSide(true); // on a phone the open result leaves no room for the settings
+    else setSide(false);
     if ($(`${h}-box`)) { $(`${h}-box`).open = true; $("side").scrollTop = 0; }
   }
   state.downloads.refresh();
@@ -608,6 +621,15 @@ function onBox(box) {
   if (!state.manifest) return;
   state.sel = { kind: t("box_label"), label: `${box.s.toFixed(2)}–${box.n.toFixed(2)}°N · ${box.w.toFixed(2)}–${box.e.toFixed(2)}°E`, cells: boxCells(state.manifest.grid, box), box };
   loadSelection();
+  showBoxOnPhone(box);
+}
+
+/** On a phone the result covers the lower part of the map and the day picker stands above it: the area just drawn is brought
+ * into the part that is left. */
+function showBoxOnPhone(box) {
+  if (window.innerWidth > 720) return;
+  const top = $("hazbar").getBoundingClientRect().bottom, below = window.innerHeight - $("bottom").getBoundingClientRect().top;
+  state.map.fitBounds([[box.s, box.w], [box.n, box.e]], { paddingTopLeft: [16, top + 10], paddingBottomRight: [72, below + 10], maxZoom: 10 });
 }
 
 function closeSelection() {
@@ -675,6 +697,7 @@ async function loadOutline() {
 
 function wire() {
   $("soum-q").addEventListener("input", (e) => { state.soumQuery = e.target.value; renderSoumList(); });
+  $("touch-draw").addEventListener("click", toggleDraw);
   $("back").addEventListener("click", () => setHazard(null));
   $("date-fold").addEventListener("click", () => { state.dateFolded = !state.dateFolded; store.set("hw.datefold", state.dateFolded ? "1" : "0"); renderDateFold(); });
   $("mine-box").addEventListener("toggle", (e) => state.tools?.setView(e.target.open ? "mine" : "aimag"));
@@ -701,7 +724,7 @@ async function boot() {
   showSide();
   renderStatic();
   initMap();
-  state.rect = initRectDraw(state.map, { onDone: onBox, isBlocked: () => $("dlg").open });
+  state.rect = initRectDraw(state.map, { onDone: onBox, onMode: renderRail, isBlocked: () => $("dlg").open });
   state.viewer = createViewer({ t });
   // a finished check is shown alone: the nationwide layer would cover it, and the switch brings it back
   const resultReady = () => {

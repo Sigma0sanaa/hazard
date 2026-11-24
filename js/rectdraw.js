@@ -1,12 +1,12 @@
 /* Rectangle selection. With a mouse, holding the left button and dragging draws the box straight away: there is no
  * tool to switch on. The right button moves the map and the wheel zooms. Touch screens start in move mode, because
- * one finger has to scroll the map; the draw button on the rail switches them over.
+ * one finger has to scroll the map; the draw button switches them over for one box, and the next finger moves the map again.
  * Esc cancels. A press without a real drag stays an ordinary click, so map clicks in other tools keep working. */
 
 const MIN_DRAG_PX = 8;
 
-export function initRectDraw(map, { onDone, onClear, isBlocked = () => false }) {
-  const L = window.L, box = map.getContainer();
+export function initRectDraw(map, { onDone, onClear, onMode, isBlocked = () => false, env = window }) {
+  const L = env.L, box = map.getContainer();
   const style = { color: "#ffffff", weight: 2, fillColor: "#ffffff", fillOpacity: 0.06, interactive: false };
   let mode = "draw", active = true, rect = null, drag = null, pan = null;
 
@@ -16,6 +16,7 @@ export function initRectDraw(map, { onDone, onClear, isBlocked = () => false }) 
     box.classList.toggle("is-draw", draw);
   };
   const setMode = (m) => { mode = m; apply(); };
+  const touch = env.matchMedia("(pointer: coarse)").matches;
 
   const latlng = (e) => {
     const r = box.getBoundingClientRect();
@@ -69,19 +70,21 @@ export function initRectDraw(map, { onDone, onClear, isBlocked = () => false }) 
     drag = null;
     if (done) {
       const b = rect.getBounds();
+      if (touch) { setMode("move"); onMode?.(mode); }
       onDone({ s: b.getSouth(), n: b.getNorth(), w: b.getWest(), e: b.getEast() });
     }
   };
   box.addEventListener("pointerup", finish);
   box.addEventListener("pointercancel", (e) => { pan = null; box.classList.remove("is-pan"); if (drag && e.pointerId === drag.id) cancel(); });
   box.addEventListener("contextmenu", (e) => e.preventDefault());
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape") cancel(); });
+  env.addEventListener("keydown", (e) => { if (e.key === "Escape") cancel(); });
 
   map.boxZoom.disable();
-  setMode(window.matchMedia("(pointer: coarse)").matches ? "move" : "draw");
+  setMode(touch ? "move" : "draw");
 
   return {
     get mode() { return mode; },
+    touch,
     toggle() { setMode(mode === "draw" ? "move" : "draw"); return mode; },
     /** With nothing to compute there is nothing to select, and the left button moves the map as on any other map. */
     setActive(on) { active = on; apply(); },
