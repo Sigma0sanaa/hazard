@@ -317,10 +317,15 @@ The chance that a soum loses 6 % or more of its adult livestock, from the winter
 
 ## 3D model of a drawn area: flood, wildfire, dust (2026-11-24)
 
-The "3D model and video" button of the flood, wildfire and dust boxes opens a window for the drawn area (up to
-2,500 km²) and the day of the date bar. Everything runs in the user's browser (`js/sim3d/`). It is a **model run**,
+The "3D model and video" button of the "3D model" section (its own folded section under the flood, wildfire and dust
+checks) opens a window for the drawn area (up to 2,500 km²) and the day of the date bar. Everything runs in the user's browser (`js/sim3d/`). It is a **model run**,
 not an observation; every frame of the view and of the video says so. Design: `docs/superpowers/specs/2026-11-24-3d-hazard-design.md`.
 
+* **View.** The ground stands as a block with earth walls; latitude and longitude are written on all four sides at round
+  values (about six per side, corner values left out) on labels that always face the viewer and keep their screen
+  size; where two labels would cover each other the nearer one stays. The sun comes from the north-west, as on a shaded
+  relief map. Heights are raised so the relief is about 7% of the width (×1, 2, 3, 5 or 10; the window says so when
+  above ×2): most of the steppe and the Gobi is too flat to show its shape at true height. The user can change it.
 * **Ground.** Copernicus DEM GLO-30 (30 m, the finest open DEM over Mongolia) at 30 m up to 1,024 cells a side
   (about 900 km²), coarser beyond; ESA WorldCover 2021; the clearest Sentinel-2 colour picture of the 20 days up to the
   day. Hourly weather: Open-Meteo at a 4 × 4 lattice (forecast within 85 days of today, ERA5 before), spread by

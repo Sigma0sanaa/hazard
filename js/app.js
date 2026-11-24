@@ -25,7 +25,7 @@ import { initDustBox } from "./aoi/dustbox.js";
 import { initFireBox } from "./aoi/firebox.js";
 import { createVegBox } from "./minedust_vegbox.js";
 import { createViewer } from "./aoi/viewer.js";
-import { createSim3d } from "./sim3d/panel.js";
+import { createSim3d, LIMITS as LIMITS_3D } from "./sim3d/panel.js";
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -84,6 +84,7 @@ function renderStatic() {
   state.fireBox?.render();
   $("t-dust-app").textContent = t("dust_app"); // dust is checked on this page (js/aoi), the GEE App stays linked
   state.dustBox?.render();
+  renderS3();
   renderSources();
   $("soum-q").placeholder = t("soum_search");
   $("hint").textContent = t("hint");
@@ -273,6 +274,7 @@ function renderScreen() {
   $("dust-box").hidden = !dust; // the dust check sits beside the mine tool
   if (!dust) $("dust-box").open = false;
   state.dustBox?.show(dust);
+  renderS3();
   showSide();
   applyBorders();
   renderBorders();
@@ -280,6 +282,19 @@ function renderScreen() {
   renderMenus();
   renderLegend();
   renderRail();
+}
+
+/** The 3D model has its own folded section under the detailed checks of flood, fire and dust. */
+function renderS3() {
+  const hz = state.hazard, on = ["flood", "fire", "dust"].includes(hz);
+  $("s3-box").hidden = !on;
+  if (!on) $("s3-box").open = false;
+  $("t-s3").textContent = t("s3_sec");
+  $("s3-app").replaceChildren(...(on ? [
+    el("p", { class: "note", text: t("s3_btn_note") }),
+    el("p", { class: "note", text: t("s3_sec_limit").replace("{m}", LIMITS_3D.hardKm2) }),
+    el("button", { class: "btn aoi-run", type: "button", text: t("s3_btn"), onclick: () => state.sim3d?.open(hz) }),
+  ] : []));
 }
 
 /* -------------------------------------------------- sources */
@@ -485,7 +500,7 @@ async function setHazard(h) {
   if (h) {
     if (!(state.sel && window.innerWidth <= 720)) setSide(true); // on a phone the open result leaves no room for the settings
     else setSide(false);
-    if ($(`${h}-box`)) { $(`${h}-box`).open = true; $("side").scrollTop = 0; }
+    $("side").scrollTop = 0; // the detailed checks stay folded: the user opens the one they want
   }
   state.downloads.refresh();
   if (!h) { leaveResults(); return; }
@@ -735,12 +750,11 @@ async function boot() {
   };
   // the 3D model window: the drawn area and the day of the date bar
   state.sim3d = createSim3d({ t, getBox: () => state.aoi ?? null, getDay: () => state.date });
-  const open3d = (hz) => state.sim3d.open(hz);
-  state.floodBox = initFloodBox({ box: $("flood-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FLOOD_APP_URL, viewer: state.viewer, onResult: resultReady, open3d });
+  state.floodBox = initFloodBox({ box: $("flood-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FLOOD_APP_URL, viewer: state.viewer, onResult: resultReady });
   state.floodBox.render();
-  state.fireBox = initFireBox({ box: $("fire-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FIRE_APP_URL, viewer: state.viewer, onResult: resultReady, open3d });
+  state.fireBox = initFireBox({ box: $("fire-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FIRE_APP_URL, viewer: state.viewer, onResult: resultReady });
   state.fireBox.render();
-  state.dustBox = initDustBox({ box: $("dust-app"), map: state.map, t, getBox: () => state.aoi ?? null, getDay: () => state.date, geeUrl: DUST_APP_URL, viewer: state.viewer, onResult: resultReady, open3d,
+  state.dustBox = initDustBox({ box: $("dust-app"), map: state.map, t, getBox: () => state.aoi ?? null, getDay: () => state.date, geeUrl: DUST_APP_URL, viewer: state.viewer, onResult: resultReady,
     setDay: async (d) => { state.dateBar.setValue(d); await setDate(state.dateBar.value); } });
   state.dustBox.render();
   state.panel = createStatsPanel($("stats"), { t, classes: classesNow, classLabel, onClose: closeSelection, onMethods: showMethods, onCsv: () => state.downloads.seriesCsv(), onPlume: showPlume });
