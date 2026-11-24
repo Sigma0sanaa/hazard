@@ -16,7 +16,7 @@ const hm = (s) => (s ? s.replace("T", " ") : "—");
 
 /** The day is the site's one day (the day picker): changing it here moves the whole screen, so the area window and this
  * check never speak of different days. */
-export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewer = null, onResult = () => {} }) {
+export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewer = null, onResult = () => {}, open3d = null }) {
   const pane = map.getPane("aoiPane") ?? map.createPane("aoiPane");
   pane.style.zIndex = 415;
   pane.style.pointerEvents = "none";
@@ -152,6 +152,7 @@ export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewe
       el("div", { class: "aoi-dates one" }, el("span", { text: t("da_day") }),
         el("input", { class: "field", type: "date", value: day, min: "2016-01-01", max: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), onchange: (e) => { if (e.target.value) setDay(e.target.value); } })),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
+      open3d && el("button", { class: "btn s3-open", type: "button", text: t("s3_btn"), title: t("s3_btn_note"), onclick: () => open3d("dust") }),
       st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       ...(r ? conclusion(r) : []),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),

@@ -25,6 +25,7 @@ import { initDustBox } from "./aoi/dustbox.js";
 import { initFireBox } from "./aoi/firebox.js";
 import { createVegBox } from "./minedust_vegbox.js";
 import { createViewer } from "./aoi/viewer.js";
+import { createSim3d } from "./sim3d/panel.js";
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -240,7 +241,7 @@ function renderRail() {
     results && button("i", t("rail_method"), () => showMethods(state.hazard)),
     button(ICON.download, t("rail_download"), () => { if (state.menuOpen) setMenu(false); state.downloads.toggle(); }),
     button(ICON.home, t("rail_home"), fitMongolia),
-    button(t("lang"), t("lang"), () => { state.lang = state.lang === "mn" ? "en" : "mn"; store.set("hw.lang", state.lang); renderAllText(); }),
+    button(t("lang"), t("lang"), () => { state.lang = state.lang === "mn" ? "en" : "mn"; store.set("hw.lang", state.lang); renderAllText(); state.sim3d?.refreshText(); }),
   ].filter(Boolean));
   // a finger has no hover to explain the rail button, and the hint of the mouse is hidden on a phone: a button that says it
   const b = $("touch-draw");
@@ -732,11 +733,14 @@ async function boot() {
     const box = { flood: state.floodBox, fire: state.fireBox, dust: state.dustBox }[state.hazard];
     if (box?.hasResult() && state.showRisk) setShowRisk(false);
   };
-  state.floodBox = initFloodBox({ box: $("flood-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FLOOD_APP_URL, viewer: state.viewer, onResult: resultReady });
+  // the 3D model window: the drawn area and the day of the date bar
+  state.sim3d = createSim3d({ t, getBox: () => state.aoi ?? null, getDay: () => state.date });
+  const open3d = (hz) => state.sim3d.open(hz);
+  state.floodBox = initFloodBox({ box: $("flood-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FLOOD_APP_URL, viewer: state.viewer, onResult: resultReady, open3d });
   state.floodBox.render();
-  state.fireBox = initFireBox({ box: $("fire-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FIRE_APP_URL, viewer: state.viewer, onResult: resultReady });
+  state.fireBox = initFireBox({ box: $("fire-app"), map: state.map, t, getBox: () => state.aoi ?? null, geeUrl: FIRE_APP_URL, viewer: state.viewer, onResult: resultReady, open3d });
   state.fireBox.render();
-  state.dustBox = initDustBox({ box: $("dust-app"), map: state.map, t, getBox: () => state.aoi ?? null, getDay: () => state.date, geeUrl: DUST_APP_URL, viewer: state.viewer, onResult: resultReady,
+  state.dustBox = initDustBox({ box: $("dust-app"), map: state.map, t, getBox: () => state.aoi ?? null, getDay: () => state.date, geeUrl: DUST_APP_URL, viewer: state.viewer, onResult: resultReady, open3d,
     setDay: async (d) => { state.dateBar.setValue(d); await setDate(state.dateBar.value); } });
   state.dustBox.render();
   state.panel = createStatsPanel($("stats"), { t, classes: classesNow, classLabel, onClose: closeSelection, onMethods: showMethods, onCsv: () => state.downloads.seriesCsv(), onPlume: showPlume });

@@ -415,3 +415,33 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
 .veg-episodes .check { margin: 2px 0; }
 .veg-ep-go { margin-left: auto; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; font-size: 12px; line-height: 18px; }
 .veg-ep-go.on { background: rgba(159, 211, 255, .25); }
+
+/* 3D model window (js/sim3d/panel.js) */
+.s3 { position: fixed; z-index: 1200; inset: 14px; display: flex; flex-direction: column; border-radius: 14px; background: var(--glass-strong); overflow: hidden; }
+.s3[hidden] { display: none; }
+.s3-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.s3-title { flex: 1; font-size: 14px; }
+.s3-close { position: static; }
+.s3-main { flex: 1; min-height: 0; display: flex; }
+.s3-view { position: relative; flex: 1; min-width: 0; background: #0b0f13; }
+.s3-view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.s3-picking .s3-view canvas { cursor: crosshair; }
+.s3-side { width: 330px; overflow-y: auto; padding: 10px 12px; border-left: 1px solid var(--line); font-size: 12.5px; }
+.s3-status { margin: 0 0 8px; color: var(--ink2); }
+.s3-status.err { color: var(--warn); }
+.s3-res { font-weight: 600; margin: 6px 0; }
+.s3-warn { color: #ffb3a7; }
+.s3-legend { margin: 8px 0; }
+.s3-fire-ctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.s3-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.s3-slider { flex: 1; min-width: 140px; }
+.s3-clock { font-family: var(--mono); font-size: 12.5px; min-width: 128px; }
+.s3-lab { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--ink2); }
+.s3-sel { padding: 2px 4px; }
+.s3-rec { background: var(--accent); border-color: var(--accent); color: #04121c; font-weight: 600; }
+.s3-open { margin-top: 6px; }
+@media (max-width: 760px) {
+  .s3 { inset: 0; border-radius: 0; }
+  .s3-main { flex-direction: column; }
+  .s3-side { width: auto; max-height: 34vh; border-left: 0; border-top: 1px solid var(--line); }
+}

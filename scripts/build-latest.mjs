@@ -54,7 +54,7 @@ const key = process.env.FIRMS_MAP_KEY;
 if (key) {
   try {
     const all = [];
-    for (const src of ["VIIRS_SNPP_NRT", "VIIRS_NOAA20_NRT", "MODIS_NRT"]) {
+    for (const src of ["VIIRS_SNPP_NRT", "VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT", "MODIS_NRT"]) {
       const res = await fetch(firmsUrl(key, src, MONGOLIA_BBOX, 3));
       if (!res.ok) throw new Error(`${src}: HTTP ${res.status}`);
       all.push(...parseFirmsCsv(await res.text(), src));
