@@ -16,7 +16,7 @@ const pct = (a, b) => (b > 0 ? Math.round(100 * a / b) + "%" : "—");
 const iso = (d) => d.toISOString().slice(0, 10);
 const ago = (n) => iso(new Date(Date.now() - n * 86400000));
 
-export function initFireBox({ box, map, t, getBox, geeUrl, viewer = null, onResult = () => {} }) {
+export function initFireBox({ box, map, t, getBox, geeUrl, viewer = null, onResult = () => {}, open3d = null }) {
   const pane = map.getPane("aoiPane") ?? map.createPane("aoiPane");
   pane.style.zIndex = 415;
   pane.style.pointerEvents = "none";
@@ -170,6 +170,7 @@ export function initFireBox({ box, map, t, getBox, geeUrl, viewer = null, onResu
       dateRow(t("fi_after"), st.after),
       el("label", { class: "check" }, el("input", { type: "checkbox", checked: st.autumn, onchange: (e) => { st.autumn = e.target.checked; } }), el("span", { text: t("fi_autumn") })),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
+      open3d && el("button", { class: "btn s3-open", type: "button", text: t("s3_btn"), title: t("s3_btn_note"), onclick: () => open3d("fire") }),
       st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),
       r && el("div", { class: "aoi-legend" },

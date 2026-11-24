@@ -314,3 +314,50 @@ Not checked yet: the TROPOMI aerosol index level, and how far a Gumbel fit to 25
 ## Dzud (2026-11-24)
 
 The chance that a soum loses 6 % or more of its adult livestock, from the winter so far, every day from 1 November to 31 March on the 0.1° grid. Four z-scores (snow 0.41, cold 0.35, herd pressure 0.29, summer NDVI 0.24; weights of Nandintsetseg et al. 2018, not fitted) make an index; a logistic line per half month turns it into a chance fitted to the NSO losses of 14 winters; the score is `20·(log4(odds / odds of 12.4 %) + 2)`. Code: `pipeline/fetch_nso.py`, `pipeline/dzud.py`, `pipeline/dzud_build.py`, `js/dzud.js`. Check and its weak points: `docs/DZUD_CHECK.md`. Dzud is not part of the combined layer, because it speaks of a whole winter and the others of one day.
+
+## 3D model of a drawn area: flood, wildfire, dust (2026-11-24)
+
+The "3D model and video" button of the flood, wildfire and dust boxes opens a window for the drawn area (up to
+2,500 km²) and the day of the date bar. Everything runs in the user's browser (`js/sim3d/`). It is a **model run**,
+not an observation; every frame of the view and of the video says so. Design: `docs/superpowers/specs/2026-11-24-3d-hazard-design.md`.
+
+* **Ground.** Copernicus DEM GLO-30 (30 m, the finest open DEM over Mongolia) at 30 m up to 1,024 cells a side
+  (about 900 km²), coarser beyond; ESA WorldCover 2021; the clearest Sentinel-2 colour picture of the 20 days up to the
+  day. Hourly weather: Open-Meteo at a 4 × 4 lattice (forecast within 85 days of today, ERA5 before), spread by
+  inverse distance squared; wind spread as east and north components.
+* **Flood (72 h).** Rain plus snowmelt (snow-depth loss above 0 °C at density 0.3) → SCS curve number runoff on the
+  cumulative input (USDA NRCS TR-55 1986, soil group C; pasture/grassland/range fair 79, woods fair 73, fallow bare
+  91, impervious 98, checked against reproductions of TR-55 Table 2-2; brush fair 70 not double-checked) → local
+  inertial routing (Bates, Horritt & Fewtrell 2010; time step α = 0.7 of de Almeida et al. 2012 with the flow speed
+  added to the wave speed, because Mongolian slopes make the flow supercritical; where the faces of a cell would take
+  more water in a step than it holds, all its outflows are scaled down together, so depths stay positive and mass is kept). Manning's n by land cover. Water leaves at the edges. It runs on the graphics card (WebGL2,
+  `flood_gpu.js`) and falls back to the processor on a grid of at most 256 cells a side. Checks
+  (`tests/sim3d_flood.test.mjs`): 100 mm on CN 79 gives 48.58 mm; a lake at rest stays at rest (1e-4 m); mass is
+  kept within 0.1 %; steady flow down a 1 % slope matches Manning's normal depth within 5 %. The card and the
+  processor agreed on a 96 × 80 test (volume 245,329 and 245,330 m³, largest depth difference 1.8 mm) and on
+  Ulaanbaatar ground (87 × 93 cells, ERA5 weather of 2023-08-05 to 07: 157,917 and 157,878 m³ left, 162,448 m³ of
+  runoff in, 4,572 m³ out at the edges, the same deepest point 1.44 m).
+* **Wildfire (24 h).** Rothermel (1972) with Albini (1976) as in BehavePlus (Andrews 2018, RMRS-GTR-371; the
+  equations were read against the open pyretechnics code), Anderson (1982) fuel models from WorldCover (forest → 2
+  timber with grass, grass and cropland → 1, shrub → 5, herbaceous wetland → 3; the rest does not burn; no Mongolian
+  fuel map was found), 1-h dead moisture 1.03 × the NFDRS equilibrium moisture (Simard 1968) from hourly temperature and
+  humidity, 10-h and 100-h 1 and 2 points wetter, live moisture 120 % in June-August and 90 % otherwise, wind from 10 m
+  to 20 ft by 1/1.15 and to midflame by the wind adjustment factor (Andrews 2012; forest sheltered under an assumed
+  50 % canopy 15 m high), wind and slope as vectors, the BehavePlus length-to-breadth ratio (capped at 8), and arrival
+  times by Dijkstra on 16 neighbours (minimum travel time, Finney 2002). Snow ≥ 1 cm or a rain hour stops spread.
+  Against Anderson's published rates at 8 % moisture and a 5 mi/h midflame wind (78, 35, 104, 1.6 ch/h for models 1,
+  2, 3, 8; INT-GTR-122) this code gives 81.1, 32.4, 102.1, 1.7 (within 8 %). On flat calm ground the burned area after
+  an hour is the circle of the Rothermel rate within 8 %.
+* **Ignition, finest first.** Sentinel-2 on the day at 20 m by the reflectance rule of Kumar & Roy (2018) for
+  Landsat-8 (red ≤ 0.53 SWIR2 − 0.214, B04 and B12), applied to Sentinel-2 L2A surface reflectance, the only level the
+  Planetary Computer serves. The AFD-S2 rules of Hu et al. (2021), made for Sentinel-2, could not be read for this page,
+  so the Landsat rule stands in for them. Then VIIRS 375 m from the site's FIRMS file (S-NPP, NOAA-20 and, since this
+  change, NOAA-21; last 3 days only), then MODIS 1 km (MOD14A1/MYD14A1 FireMask ≥ 7, start taken at 13:30), then a
+  point the user clicks. A 375 m or 1 km detection starts the fire on every burnable cell of its footprint.
+* **Dust (72 h).** Emission on Sentinel-2 bare (threshold 8.9 m/s) and sparse ground (9.8 m/s; Kurosaki & Mikami
+  2007, 5th percentile) when the day is not wet (0.254 mm), there is no snow and the topsoil holds less than
+  0.25 m³/m³; strength by White's (1979) u³(1 + uₜ/u)(1 − uₜ²/u²); up to 40,000 particles blown by the hourly wind with a
+  random vertical mix, fading after 18 h. Relative only.
+* **Video.** The browser's MediaRecorder records a canvas holding the 3D picture, the title, the local time, the
+  legend and the "model run, not an observation, not an official warning" line: MP4 where the browser supports it,
+  otherwise WebM.
