@@ -19,7 +19,7 @@ const pct = (a, b) => (b > 0 ? Math.round(100 * a / b) + "%" : "—");
 const addDays = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const utc = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 
-export function initFloodBox({ box, map, t, getBox, geeUrl, viewer = null, onResult = () => {}, open3d = null }) {
+export function initFloodBox({ box, map, t, getBox, geeUrl, viewer = null, onResult = () => {} }) {
   const pane = map.createPane("aoiPane");
   pane.style.zIndex = 415;
   pane.style.pointerEvents = "none";
@@ -185,7 +185,6 @@ export function initFloodBox({ box, map, t, getBox, geeUrl, viewer = null, onRes
         el("input", { type: "range", min: "1.10", max: "1.40", step: "0.05", value: String(st.threshold), oninput: (e) => { st.threshold = Number(e.target.value); e.target.previousSibling.textContent = `${t("fa_threshold")}: ${st.threshold.toFixed(2)}`; } })),
       el("p", { class: "note", text: t("fa_threshold_note") }),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
-      open3d && el("button", { class: "btn s3-open", type: "button", text: t("s3_btn"), title: t("s3_btn_note"), onclick: () => open3d("flood") }),
       st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),
       r && el("div", { class: "aoi-legend" }, ...LAYERS.filter((k) => k !== "s2" || r.s2water).map((k) => el("label", { class: "check" },

@@ -12,7 +12,7 @@ import { floatContext, runGpu } from "./flood_gpu.js";
 import { burnedKm2, cellOf, spreadFire } from "./fire_sim.js";
 import { findIgnition } from "./ignition.js";
 import { createDustRun, emissions, summary } from "./dust_sim.js";
-import { createScene } from "./scene.js";
+import { autoExaggeration, createScene } from "./scene.js";
 import { pickFormat, record } from "./recorder.js";
 
 export const LIMITS = { hardKm2: 2500, cpuSide: 256, fireHours: 24 };
@@ -47,7 +47,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
   const clock = el("span", { class: "s3-clock" });
   const playBtn = el("button", { type: "button", class: "btn s3-play" });
   const speedSel = el("select", { class: "field s3-sel", title: "" });
-  const exagSel = el("select", { class: "field s3-sel" }, ...[1, 2, 3, 5].map((x) => el("option", { value: String(x), text: `×${x}`, selected: x === 2 })));
+  const exagSel = el("select", { class: "field s3-sel" }, ...[1, 2, 3, 5, 10].map((x) => el("option", { value: String(x), text: `×${x}`, selected: x === 2 })));
   const recBtn = el("button", { type: "button", class: "btn s3-rec" });
   const title = el("b", { class: "s3-title" });
   const closeBtn = el("button", { type: "button", class: "side-close s3-close", text: "×", onclick: () => close() });
@@ -154,14 +154,23 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
 
   function showScene(b) {
     st.scene?.dispose();
-    st.scene = createScene(view);
+    st.scene = createScene(view, { north: t("s3_north") });
     st.scene.resize();
-    st.scene.setExaggeration(Number(exagSel.value));
+    // flat ground (most of the steppe and the Gobi) shows no shape at its true height: raise it until the relief reads
+    let zmin = Infinity, zmax = -Infinity; for (const v of b.z) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
+    const m = cellMetres(b.g), x = autoExaggeration(zmax - zmin, Math.max(b.g.w * m.x, b.g.h * m.y));
+    exagSel.value = String(x);
+    st.exagNote = x > 2 ? fill(t("s3_exag_auto"), { x }) : "";
+    st.scene.setExaggeration(x);
     st.scene.setGround(b.g, b.z, b.sat?.canvas ?? null);
     view.onclick = (ev) => { if (st.picking) pickIgnition(ev); };
   }
 
-  function lines(list) { info.replaceChildren(...list.filter(Boolean)); }
+  function lines(list) {
+    const l = list.filter(Boolean);
+    if (st.exagNote) l.splice(1, 0, el("p", { class: "note", text: st.exagNote }));
+    info.replaceChildren(...l);
+  }
   const p = (text, cls = "note") => el("p", { class: cls, text });
 
   // ---------- flood
