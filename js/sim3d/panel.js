@@ -2,6 +2,7 @@
  * (js/sim3d/flood_*.js, fire_sim.js, dust_sim.js), shows it on the terrain with a time line, and records a video.
  * Everything runs in the user's browser from open data. */
 import { el } from "../dom.js";
+import { drawingMark } from "../logo.js";
 import { boxAreaKm2 } from "../aoi/raster.js";
 import { backdrop } from "../aoi/backdrop.js";
 import { surface, landShares, LAND } from "../aoi/dust.js";
@@ -41,6 +42,7 @@ export function coarsen(g, z, cover, maxSide) {
 
 export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
   const status = el("p", { class: "s3-status", role: "status" });
+  const mark = el("div", { class: "s3-mark", hidden: true }); // the drawing logo above the status while data load and the model runs
   const info = el("div", { class: "s3-info" });
   const view = el("div", { class: "s3-view" });
   const slider = el("input", { type: "range", min: "0", max: "1000", value: "0", class: "s3-slider", "aria-label": "time" });
@@ -53,12 +55,14 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
   const closeBtn = el("button", { type: "button", class: "side-close s3-close", text: "×", onclick: () => close() });
   const bar = el("div", { class: "s3-bar" }, playBtn, slider, clock, el("label", { class: "s3-lab" }, el("span", { class: "s3-l-speed" }), speedSel), el("label", { class: "s3-lab" }, el("span", { class: "s3-l-exag" }), exagSel), recBtn);
   const root = el("section", { class: "s3 glass", role: "dialog", "aria-modal": "true", hidden: true },
-    el("header", { class: "s3-head" }, title, closeBtn), el("div", { class: "s3-main" }, view, el("aside", { class: "s3-side" }, status, info)), bar);
+    el("header", { class: "s3-head" }, title, closeBtn), el("div", { class: "s3-main" }, view, el("aside", { class: "s3-side" }, mark, status, info)), bar);
   document.body.append(root);
 
   const st = { hz: null, scene: null, run: null, T: 0, t: 0, playing: false, raf: 0, rec: null, picking: false, token: 0 };
 
   function setStatus(text, err = false) { status.textContent = text; status.classList.toggle("err", err); }
+  /** Shows the drawing logo (from the start of its loop) or takes it away. */
+  function working(on) { mark.hidden = !on; mark.replaceChildren(...(on ? [drawingMark({ go: true })] : [])); }
   function labelsNow() {
     root.querySelector(".s3-l-speed").textContent = t("s3_speed");
     root.querySelector(".s3-l-exag").textContent = t("s3_exag");
@@ -113,6 +117,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
     const ctl = new AbortController();
     st.rec = ctl;
     recBtn.disabled = true;
+    working(true);
     const secs = Math.max(8, Math.min(40, st.T / 60 / Number(speedSel.value)));
     try {
       const { blob, ext } = await record({
@@ -128,6 +133,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
       setStatus(t("s3_err") + (e.message === "no_recorder" ? t("s3_rec_none") : e.message), true);
     }
     st.rec = null; recBtn.disabled = false;
+    working(false);
   }
 
   function close() {
@@ -135,6 +141,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
     st.playing = false; st.rec?.abort();
     cancelAnimationFrame(st.raf);
     st.scene?.dispose(); st.scene = null; st.run = null;
+    working(false);
     root.hidden = true;
   }
 
@@ -299,6 +306,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
     const km2 = boxAreaKm2(box);
     if (km2 > LIMITS.hardKm2) { setStatus(fill(t("s3_too_big"), { a: Math.round(km2), m: LIMITS.hardKm2 }), true); return; }
     st.raf = requestAnimationFrame(loop);
+    working(true);
     try {
       const days = hz === "fire" ? 2 : 3;
       const b = await base(box, day, days, token);
@@ -318,6 +326,8 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
       if (token !== st.token) return;
       const key = { no_weather: "s3_err_weather", no_dem: "s3_err_dem" }[e.message];
       setStatus(key ? t(key) : t("s3_err") + e.message, true);
+    } finally {
+      if (token === st.token) working(false);
     }
   }
 
