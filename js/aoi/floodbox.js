@@ -1,6 +1,7 @@
 /* The detailed flood check in the side menu: dates, threshold, the run, the numbers and the layer on the map.
  * The area is the box the user drew (or the soum picked); the method is in js/aoi/flood.js. */
 import { el } from "../dom.js";
+import { drawingMark } from "../logo.js";
 import { CODE, FLOOD, computeFlood, scaleFor } from "./flood.js";
 import { boxAreaKm2 } from "./raster.js";
 import { backdrop } from "./backdrop.js";
@@ -93,7 +94,7 @@ export function initFloodBox({ box, map, t, getBox, geeUrl, viewer = null, onRes
     if (!b) { st.error = true; st.status = t("fa_err_box"); render(); return; }
     if (!(st.before[0] <= st.before[1] && st.before[1] < st.after[0] && st.after[0] <= st.after[1])) { st.error = true; st.status = t("fa_err_dates"); render(); return; }
     if (boxAreaKm2(b) > FLOOD.hardKm2) { st.error = true; st.status = areaLine(); render(); return; }
-    st.running = true; st.error = false; st.result = null; paint();
+    st.running = true; st.since = performance.now(); st.error = false; st.result = null; paint();
     const t0 = performance.now();
     try {
       const r = await computeFlood({ box: b, before: st.before, after: st.after, threshold: st.threshold, step: (k) => { st.status = t("fa_step_" + k); render(); } });
@@ -185,7 +186,8 @@ export function initFloodBox({ box, map, t, getBox, geeUrl, viewer = null, onRes
         el("input", { type: "range", min: "1.10", max: "1.40", step: "0.05", value: String(st.threshold), oninput: (e) => { st.threshold = Number(e.target.value); e.target.previousSibling.textContent = `${t("fa_threshold")}: ${st.threshold.toFixed(2)}`; } })),
       el("p", { class: "note", text: t("fa_threshold_note") }),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
-      st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
+      st.running ? el("div", { class: "aoi-busy" }, drawingMark({ since: st.since, go: true }), el("p", { class: "aoi-status", role: "status", text: st.status }))
+        : st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),
       r && el("div", { class: "aoi-legend" }, ...LAYERS.filter((k) => k !== "s2" || r.s2water).map((k) => el("label", { class: "check" },
         el("input", { type: "checkbox", checked: st.show[k], onchange: (e) => { st.show[k] = e.target.checked; paint(); } }),

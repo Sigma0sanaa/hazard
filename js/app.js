@@ -26,6 +26,7 @@ import { initFireBox } from "./aoi/firebox.js";
 import { createVegBox } from "./minedust_vegbox.js";
 import { createViewer } from "./aoi/viewer.js";
 import { createSim3d, LIMITS as LIMITS_3D } from "./sim3d/panel.js";
+import { drawingMark } from "./logo.js";
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -152,6 +153,7 @@ function busy(on) {
   $("busy").classList.toggle("on", working > 0);
 }
 const whileBusy = async (job) => { busy(true); try { return await job(); } finally { busy(false); } };
+$("busy-text").before(drawingMark()); // the mark above the note draws itself while the screen is on
 
 /* --------------------------------------------------------------- day picker */
 function renderDateFold() {

@@ -1,6 +1,7 @@
 /* The burned area check in the side menu: dates, the spring option, the run, the numbers, the severity map with the
  * MODIS burned edge and active fires, and the download. The method is in js/aoi/fire.js. */
 import { el } from "../dom.js";
+import { drawingMark } from "../logo.js";
 import { CLASSES, FIRE, computeFire, scaleFor } from "./fire.js";
 import { boxAreaKm2 } from "./raster.js";
 import { backdrop } from "./backdrop.js";
@@ -91,7 +92,7 @@ export function initFireBox({ box, map, t, getBox, geeUrl, viewer = null, onResu
     if (!b) { st.error = true; st.status = t("fa_err_box"); render(); return; }
     if (!(st.before[0] <= st.before[1] && st.before[1] < st.after[0] && st.after[0] <= st.after[1])) { st.error = true; st.status = t("fi_err_dates"); render(); return; }
     if (boxAreaKm2(b) > FIRE.hardKm2) { st.error = true; st.status = areaLine(); render(); return; }
-    st.running = true; st.error = false; st.result = null; paint();
+    st.running = true; st.since = performance.now(); st.error = false; st.result = null; paint();
     const t0 = performance.now();
     try {
       st.result = await computeFire({ box: b, before: st.before, after: st.after, autumn: st.autumn, step: (k) => { st.status = t("fi_step_" + k); render(); } });
@@ -170,7 +171,8 @@ export function initFireBox({ box, map, t, getBox, geeUrl, viewer = null, onResu
       dateRow(t("fi_after"), st.after),
       el("label", { class: "check" }, el("input", { type: "checkbox", checked: st.autumn, onchange: (e) => { st.autumn = e.target.checked; } }), el("span", { text: t("fi_autumn") })),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
-      st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
+      st.running ? el("div", { class: "aoi-busy" }, drawingMark({ since: st.since, go: true }), el("p", { class: "aoi-status", role: "status", text: st.status }))
+        : st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),
       r && el("div", { class: "aoi-legend" },
         ...[...CLASSES].reverse().filter((c) => c.from >= 0.10).map((c) => el("label", { class: "check" }, el("i", { style: `background:rgb(${c.color.join(",")})` }), el("span", { text: `${t("fi_c_" + c.key)} (${c.from} – ${c.to > 2 ? "" : c.to})` }))),

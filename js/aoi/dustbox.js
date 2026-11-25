@@ -1,6 +1,7 @@
 /* The dust check in the side menu: day, the run, the plain conclusion, the numbers and the ground map.
  * The area is the box the user drew (or the soum picked); the method is in js/aoi/dust.js. */
 import { el } from "../dom.js";
+import { drawingMark } from "../logo.js";
 import { DUST, LAND, computeDust, scaleFor } from "./dust.js";
 import { boxAreaKm2 } from "./raster.js";
 import { backdrop } from "./backdrop.js";
@@ -80,7 +81,7 @@ export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewe
     const b = getBox(), day = getDay();
     if (!b) { st.error = true; st.status = t("fa_err_box"); render(); return; }
     if (boxAreaKm2(b) > DUST.hardKm2) { st.error = true; st.status = areaLine(); render(); return; }
-    st.running = true; st.error = false; st.result = null; paint();
+    st.running = true; st.since = performance.now(); st.error = false; st.result = null; paint();
     const t0 = performance.now();
     try {
       st.result = await computeDust({ box: b, day, step: (k) => { st.status = t("da_step_" + k); render(); } });
@@ -152,7 +153,8 @@ export function initDustBox({ box, map, t, getBox, getDay, setDay, geeUrl, viewe
       el("div", { class: "aoi-dates one" }, el("span", { text: t("da_day") }),
         el("input", { class: "field", type: "date", value: day, min: "2016-01-01", max: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), onchange: (e) => { if (e.target.value) setDay(e.target.value); } })),
       el("button", { class: "btn aoi-run", type: "button", text: t("fa_run"), disabled: st.running, onclick: run }),
-      st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
+      st.running ? el("div", { class: "aoi-busy" }, drawingMark({ since: st.since, go: true }), el("p", { class: "aoi-status", role: "status", text: st.status }))
+        : st.status && el("p", { class: "aoi-status" + (st.error ? " err" : ""), role: "status", text: st.status }),
       ...(r ? conclusion(r) : []),
       r && el("ul", { class: "aoi-lines" }, ...lines(r).map((l) => el("li", { text: l }))),
       r?.land && el("div", { class: "aoi-legend" }, ...LAYERS.map((k) => el("label", { class: "check" },
