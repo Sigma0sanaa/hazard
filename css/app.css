@@ -335,6 +335,26 @@ table.kv tr.clk:hover { background: rgba(255, 255, 255, .08); }
 .busy { position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center; background: rgba(12, 14, 16, .14); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .22s ease, visibility 0s linear .22s; }
 .busy.on { opacity: 1; visibility: visible; transition: opacity .22s ease .14s, visibility 0s; }
 .busy span { font-size: 12px; font-weight: 500; letter-spacing: .02em; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
+/* the mark above the computing note draws itself in a loop while the screen is on; at rest (fading out, reduced motion) it is whole */
+.busy-card { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.busy-logo { width: 47px; height: 52px; overflow: visible; color: #fff; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .55)); }
+.busy-logo .bl-ink { stroke-width: 7; }
+.busy-logo .bl-sat { stroke-width: 6.5; }
+.busy-logo .bl-body { fill: #B8965A; }
+.busy-logo [pathLength] { stroke-dasharray: 1 1; stroke-dashoffset: 0; }
+.busy.on .bl-s { animation: bl-s 3.2s cubic-bezier(.45, 0, .25, 1) infinite; }
+.busy.on .bl-a { animation: bl-a 3.2s cubic-bezier(.45, 0, .25, 1) infinite; }
+.busy.on .bl-a2 { animation-name: bl-a2; }
+.busy.on .bl-sat [pathLength] { animation: bl-sat 3.2s ease-out infinite; }
+.busy.on .bl-sat .bl-body { animation-name: bl-body; }
+.busy.on .busy-logo { animation: bl-fade 3.2s linear infinite; }
+@keyframes bl-s { 0% { stroke-dashoffset: 1; fill-opacity: 0; } 42% { stroke-dashoffset: 0; fill-opacity: 0; } 56%, 100% { stroke-dashoffset: 0; fill-opacity: 1; } }
+@keyframes bl-a { 0%, 14% { stroke-dashoffset: 1; fill-opacity: 0; } 34% { stroke-dashoffset: 0; fill-opacity: 0; } 50%, 100% { stroke-dashoffset: 0; fill-opacity: 1; } }
+@keyframes bl-a2 { 0%, 22% { stroke-dashoffset: 1; fill-opacity: 0; } 42% { stroke-dashoffset: 0; fill-opacity: 0; } 54%, 100% { stroke-dashoffset: 0; fill-opacity: 1; } }
+@keyframes bl-sat { 0%, 50% { stroke-dashoffset: 1; } 72%, 100% { stroke-dashoffset: 0; } }
+@keyframes bl-body { 0%, 50% { stroke-dashoffset: 1; fill-opacity: 0; } 66% { stroke-dashoffset: 0; fill-opacity: 0; } 76%, 100% { stroke-dashoffset: 0; fill-opacity: 1; } }
+@keyframes bl-fade { 0%, 88% { opacity: 1; } 97%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .busy.on .busy-logo, .busy.on .busy-logo * { animation: none; } }
 .lbl { color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 0 3px #000, 0 0 3px #000; white-space: nowrap; pointer-events: none; }
 
 /* smaller windows: the menu collapses, the area window becomes a sheet at the bottom */
