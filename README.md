@@ -36,6 +36,10 @@ A web page showing flood, wildfire and dust-storm indices for 21 aimags and Ulaa
 4. (Заавал биш) **Actions → Flood return levels → Run workflow**: голын урсацын 2/5/20 жилийн буцалтын түвшнийг тооцно (нэг удаа, дараа нь жилд нэг).
 5. (Заавал биш) Үнэгүй NASA FIRMS түлхүүр аваад (`firms.modaps.eosdis.nasa.gov/api/map_key`) репо → Settings → Secrets and variables → Actions → `FIRMS_MAP_KEY` нэрээр хадгалбал газрын зураг дээр сүүлийн 3 хоногийн гал илрүүлэлт гарна.
 
+### Vercel дээр (заавал биш)
+
+`vercel.com/new` → энэ репог **Import** → тохиргоог өөрчлөхгүйгээр **Deploy**. `vercel.json` нь `scripts/vercel-build.sh`-ийг ажиллуулж, GitHub Pages-тэй ижил `_site` хавтсыг угсарна (Earth Engine өгөгдлийг `gee-data` салбараас татна). Vercel зөвхөн `main`-д push хийхэд дахин build хийдэг тул өгөгдөл Pages шиг 3 цаг тутам өөрөө шинэчлэгдэхгүй: шинэчлэхийн тулд Vercel → Deployments → **Redeploy**. Репогоос CLI-аар (`vercel deploy`) оруулж болохгүй: сайт ~210 MB, Hobby төлөвлөгөөний CLI хязгаар 100 MB.
+
 ## Шалгасан байдал / Verification status
 
 * Open-Meteo өгөгдлийн татаж авалт GitHub Actions дээр бодитоор ажилласан (22/22 цэг).
