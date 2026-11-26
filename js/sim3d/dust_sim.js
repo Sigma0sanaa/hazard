@@ -111,6 +111,40 @@ export function createDustRun(g, fields, em, { seed = 7 } = {}) {
   };
 }
 
+/** Why no dust rose in the first `n` hours, from the same rules as emissions(): whether any ground can emit, the
+ * strongest wind over that ground against its threshold, and the hours the wet-day, snow and wet-soil stops took.
+ * The caption names only the reasons that held, so a calm dry day is not called wet. */
+export function quietReasons(g, land, fields, n = fields.hours) {
+  const N = g.w * g.h, P = fields.plan, wet = wetDays(fields), H = Math.min(n, fields.hours);
+  let ut = Infinity;
+  for (let i = 0; i < N; i++) ut = Math.min(ut, thresholdOf(land[i]));
+  const out = { source: ut < Infinity, threshold: ut < Infinity ? ut : null, maxWind: null, maxWindTime: null, maxGust: null,
+    wetDays: [], snowHours: 0, soilHours: 0, blockedWindyHours: 0 };
+  if (!out.source) return out;
+  const wetSeen = new Set();
+  for (let h = 0; h < H; h++) {
+    const day = fields.time[h].slice(0, 10), wetDay = wet.has(day);
+    if (wetDay) wetSeen.add(day);
+    let snowy = false, soggy = false, windyBlocked = false;
+    for (let r = 0; r < g.h; r++) for (let c = 0; c < g.w; c++) {
+      const i = r * g.w + c, t = thresholdOf(land[i]);
+      if (t === Infinity) continue;
+      const u = Math.hypot(at(P, fields.u[h], r, c), at(P, fields.v[h], r, c));
+      if (Number.isFinite(u) && (out.maxWind === null || u > out.maxWind)) { out.maxWind = u; out.maxWindTime = fields.time[h]; }
+      const gu = fields.gust ? at(P, fields.gust[h], r, c) : NaN;
+      if (Number.isFinite(gu) && (out.maxGust === null || gu > out.maxGust)) out.maxGust = gu;
+      const sn = at(P, fields.snowDepth[h], r, c) >= DUST.snowM, so = at(P, fields.soil[h], r, c) >= DUST.soilWet;
+      snowy ||= sn; soggy ||= so;
+      if (u > t && (wetDay || sn || so)) windyBlocked = true;
+    }
+    if (snowy) out.snowHours++;
+    if (soggy) out.soilHours++;
+    if (windyBlocked) out.blockedWindyHours++;
+  }
+  out.wetDays = [...wetSeen];
+  return out;
+}
+
 /** Plain numbers of the run for the caption: hours with emission, the strongest hour, and its wind. */
 export function summary(fields, em) {
   let hours = 0, best = -1;

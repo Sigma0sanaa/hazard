@@ -12,7 +12,7 @@ import { FLOOD3D, byteDepth, depthByte, inputSeries, runCpu, runoffRates } from 
 import { floatContext, runGpu } from "./flood_gpu.js";
 import { burnedKm2, cellOf, spreadFire } from "./fire_sim.js";
 import { findIgnition } from "./ignition.js";
-import { createDustRun, emissions, summary } from "./dust_sim.js";
+import { createDustRun, emissions, quietReasons, summary } from "./dust_sim.js";
 import { autoExaggeration, createScene } from "./scene.js";
 import { pickFormat, record } from "./recorder.js";
 
@@ -268,6 +268,23 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
   }
 
   // ---------- dust
+  /** The caption when no dust rises: only the reasons that held, then how this differs from the map score. */
+  function quietLines(q, n) {
+    const ul = (s) => s.charAt(0).toUpperCase() + s.slice(1), why = [];
+    if (!q.source) why.push(t("s3_q_nosrc"));
+    else {
+      const u = q.threshold.toFixed(1);
+      if (q.maxWind !== null && q.maxWind <= q.threshold) why.push(fill(t("s3_q_calm"), { w: q.maxWind.toFixed(1), t: q.maxWindTime.replace("T", " "), u }));
+      if (q.blockedWindyHours) why.push(fill(t("s3_q_blocked"), { u, k: q.blockedWindyHours }));
+      if (q.wetDays.length) why.push(fill(t("s3_q_wet"), { d: q.wetDays.join(", ") }));
+      if (q.soilHours) why.push(fill(t("s3_q_soil"), { k: q.soilHours }));
+      if (q.snowHours) why.push(fill(t("s3_q_snow"), { k: q.snowHours }));
+    }
+    const out = [p(fill(t("s3_r_dust_none"), { n }), "s3-res"), ...why.map((w) => p("• " + ul(w), "s3-res"))];
+    if (q.source && q.maxGust !== null && q.maxGust > q.threshold && q.maxWind !== null && q.maxWind <= q.threshold) out.push(p(fill(t("s3_q_gust"), { g: q.maxGust.toFixed(1) })));
+    out.push(p(t("s3_q_map"), "note"));
+    return out;
+  }
   async function runDust(b, token) {
     setStatus(t("s3_step_surface"));
     const sf = await surface(boxOf(b.g), b.day).catch(() => ({ land: null }));
@@ -287,7 +304,7 @@ export function createSim3d({ t, getBox, getDay, lang = () => "mn" }) {
     st.run = { ...st.run, offset: 0, note: fill(t("s3_grid"), { s: Math.round(g.scale) }) };
     const sh = landShares(sf.grid, sf.land), bare = ((sh.share[LAND.bare] ?? 0) + (sh.share[LAND.sparse] ?? 0)) * 100;
     lines([
-      p(sum.hours ? fill(t("s3_r_dust"), { h: sum.hours, n: Math.round(st.T / 60), t: sum.peakHour.replace("T", " ") }) : fill(t("s3_r_dust_none"), { n: Math.round(st.T / 60) }), "s3-res"),
+      ...(sum.hours ? [p(fill(t("s3_r_dust"), { h: sum.hours, n: Math.round(st.T / 60), t: sum.peakHour.replace("T", " ") }), "s3-res")] : quietLines(quietReasons(g, land, b.fields, st.T / 60), Math.round(st.T / 60))),
       p(fill(t("s3_bare"), { p: Math.round(bare), d: sf.dates.join(", ") })),
       p(fill(t("s3_grid"), { s: Math.round(g.scale) }) + ` · ${g.w}×${g.h} · ${t("s3_wx_" + b.wx.source)}`),
       renderLegend(), p(t("s3_m_dust")), p(t("s3_l_dust")), p(t("s3_warn"), "note s3-warn"), p(t("s3_src"), "note small"),

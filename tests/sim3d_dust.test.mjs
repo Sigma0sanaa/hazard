@@ -1,5 +1,5 @@
 /* The 3D dust run (js/sim3d/dust_sim.js) and the weather spreading of js/sim3d/inputs.js, on cases worked out by hand. */
-import { DUST3D, createDustRun, emissions, rng, thresholdOf, whiteFlux, wetDays } from "../js/sim3d/dust_sim.js";
+import { DUST3D, createDustRun, emissions, quietReasons, rng, thresholdOf, whiteFlux, wetDays } from "../js/sim3d/dust_sim.js";
 import { LAND } from "../js/aoi/dust.js";
 import { makeGrid } from "../js/aoi/raster.js";
 import { fillHoles, grid3d, idwPlan, lattice, spread, weatherPlan, windVector } from "../js/sim3d/inputs.js";
@@ -30,6 +30,18 @@ export function check() {
   yes("calm wind: nothing", emissions(g, land, fields(g, 6, { wind: 5 })).totals.every((v) => v === 0));
   const wd = wetDays(fields(g, 30, { rain: 0.02 }));
   yes("wet day from the day's sum (24 × 0.02 = 0.48 mm)", wd.has("2023-04-10") && !wd.has("2023-04-11"));
+
+  // why nothing rose: only the reasons that held
+  const sparse = new Uint8Array(n).fill(LAND.sparse);
+  const calm = quietReasons(g, sparse, fields(g, 72, { wind: 8.3, soil: 0.014 }));
+  yes("calm, dry sparse ground: wind 8.3 below 9.8, no wet day, soil or snow named",
+    calm.source && calm.threshold === 9.8 && Math.abs(calm.maxWind - 8.3) < 1e-4 && !calm.wetDays.length && calm.soilHours === 0 && calm.snowHours === 0 && calm.blockedWindyHours === 0);
+  const blocked = quietReasons(g, sparse, fields(g, 72, { wind: 12, soil: 0.3 }));
+  yes("strong wind on wet soil: blocked hours and soil hours, all 72", blocked.blockedWindyHours === 72 && blocked.soilHours === 72);
+  const rainy = quietReasons(g, land, fields(g, 48, { wind: 12, rain: 0.1 }));
+  yes("rain every hour: both days wet, the bare threshold 8.9 is the lowest", rainy.wetDays.length === 2 && rainy.threshold === 8.9 && rainy.blockedWindyHours === 48);
+  yes("vegetation only: no source", quietReasons(g, new Uint8Array(n).fill(LAND.veg), fields(g, 6)).source === false);
+  yes("only the first n hours count", quietReasons(g, sparse, fields(g, 72, { wind: 12, soil: 0.3 }), 10).soilHours === 10);
 
   // particles go downwind (east) and the run repeats exactly; a box of 40 km so they stay in it for a while
   const gb = makeGrid({ s: 43, n: 43.36, w: 104, e: 104.5 }, 500), lb = new Uint8Array(gb.w * gb.h).fill(LAND.bare);
